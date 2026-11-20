@@ -41,7 +41,6 @@ export function TimelinePage() {
   const [typeFilter, setTypeFilter] = useState<'all' | GitHubEventType>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | ProcessingStatus>('all');
   const [viewMode, setViewMode] = useState<'events' | 'clusters'>('events');
-  const [showAllJson, setShowAllJson] = useState(false);
   const [expandedJsonIds, setExpandedJsonIds] = useState<Set<string>>(new Set());
   const [copiedEventId, setCopiedEventId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -155,17 +154,17 @@ export function TimelinePage() {
   };
 
   const handleCopyEvent = async (ev: ActivityEvent) => {
-    const repoName = repoMap.get(ev.repositoryId)?.fullName ?? 'Repository';
+    const repoName = repoMap.get(ev.repositoryId)?.fullName ?? 'Project';
     const text = `[${repoName} · ${ev.branch}${
       ev.commitSha ? ` · ${ev.commitSha.slice(0, 7)}` : ''
     }] ${ev.title}`;
     try {
       await navigator.clipboard.writeText(text);
       setCopiedEventId(ev.id);
-      showToast('Event summary copied to clipboard.', 'success');
+      showToast('Copied.', 'success');
       window.setTimeout(() => setCopiedEventId(null), 1800);
     } catch {
-      showToast('Clipboard access was denied.', 'error');
+      showToast("Couldn't copy. Your browser blocked access to the clipboard.", 'error');
     }
   };
 
@@ -184,7 +183,7 @@ export function TimelinePage() {
           );
 
     if (!targetRepo) {
-      showToast('No pending events found across connected repositories.', 'info');
+      showToast('Everything is already summarized.', 'info');
       return;
     }
 
@@ -192,22 +191,22 @@ export function TimelinePage() {
       const res = await summarizeRepositoryPendingEvents(targetRepo);
       if (res.status === 'ready') {
         showToast(
-          `Summarized ${res.summarizedCount} events for ${targetRepo.fullName}.`,
+          `Created a recap of ${res.summarizedCount} ${res.summarizedCount === 1 ? 'update' : 'updates'} for ${targetRepo.fullName}.`,
           'success'
         );
       } else {
-        showToast(res.message || 'Summarizer unavailable; raw events kept intact.', 'info');
+        showToast(res.message || "AI recaps aren't available right now. Your updates are still saved.", 'info');
       }
     } catch (error) {
-      showToast(parseFriendlyFirestoreError(error, 'Failed to summarize events.'), 'error');
+      showToast(parseFriendlyFirestoreError(error, "Couldn't create a recap. Please try again."), 'error');
     }
   };
 
   return (
     <AppShell
-      title="Activity Timeline"
-      breadcrumbs={[{ label: 'Workspace' }, { label: 'Activity Timeline' }]}
-      subtitle="Chronological GitHub commits, pull requests, issues, and inferred activity clusters."
+      title="Timeline"
+      breadcrumbs={[{ label: 'Workspace' }, { label: 'Timeline' }]}
+      subtitle="Everything that happened in your projects, newest first."
       actions={
         repositories.length > 0 ? (
           <Button
@@ -217,7 +216,7 @@ export function TimelinePage() {
             icon={<Sparkles className="w-3.5 h-3.5" />}
             onClick={() => void handleSummarizeSelectedRepo()}
           >
-            Summarize Pending Events
+            Create AI recap
           </Button>
         ) : undefined
       }
@@ -235,9 +234,9 @@ export function TimelinePage() {
       ) : activityEvents.length === 0 ? (
         <EmptyState
           icon={<History className="w-5 h-5" />}
-          title="No GitHub activity recorded yet"
-          description="Connect a GitHub repository and sync its history or push a commit to start populating your automated timeline."
-          actionLabel="Open Integrations"
+          title="Nothing here yet"
+          description="Add a project from GitHub and its recent work will show up here, along with every new change."
+          actionLabel="Add a project"
           onAction={() => navigate('/integrations')}
         />
       ) : (
@@ -246,7 +245,7 @@ export function TimelinePage() {
           <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="rounded-2xl border border-[#252D24] bg-[#121512] p-4 flex items-center justify-between">
               <div>
-                <p className="text-xs text-[#929B90]">Total Ingested Events</p>
+                <p className="text-xs text-[#929B90]">Updates recorded</p>
                 <p className="mt-1 text-2xl font-display font-bold tabular-nums text-[#FCFFEC]">
                   {activityEvents.length}
                 </p>
@@ -256,7 +255,7 @@ export function TimelinePage() {
 
             <div className="rounded-2xl border border-[#252D24] bg-[#121512] p-4 flex items-center justify-between">
               <div>
-                <p className="text-xs text-[#929B90]">AI Summaries Generated</p>
+                <p className="text-xs text-[#929B90]">AI recaps</p>
                 <p className="mt-1 text-2xl font-display font-bold tabular-nums text-[#B8F34A]">
                   {activitySummaries.length}
                 </p>
@@ -266,7 +265,7 @@ export function TimelinePage() {
 
             <div className="rounded-2xl border border-[#252D24] bg-[#121512] p-4 flex items-center justify-between">
               <div>
-                <p className="text-xs text-[#929B90]">Inferred Activity Clusters</p>
+                <p className="text-xs text-[#929B90]">Work sessions</p>
                 <p className="mt-1 text-2xl font-display font-bold tabular-nums text-[#FCFFEC]">
                   {allClusters.length}
                 </p>
@@ -294,7 +293,7 @@ export function TimelinePage() {
                         setSearch(e.target.value);
                         setPage(1);
                       }}
-                      placeholder="Search commits, PRs, branches, or files..."
+                      placeholder="Search by title, person or file…"
                       aria-label="Search timeline"
                       className="min-h-[40px] w-full rounded-lg border border-[#252D24] bg-[#080908] pl-10 pr-10 py-2 text-sm text-[#F3F5EF] placeholder:text-[#929B90]/60 focus:outline-none focus:border-[#B8F34A]"
                     />
@@ -313,16 +312,16 @@ export function TimelinePage() {
                       }}
                       className="min-h-[40px] w-full rounded-lg border border-[#252D24] bg-[#080908] px-3 py-2 text-sm text-[#F3F5EF] focus:outline-none focus:border-[#B8F34A]"
                     >
-                      <option value="all">All types</option>
-                      <option value="push">Push commits</option>
-                      <option value="pull_request">Pull requests</option>
+                      <option value="all">Everything</option>
+                      <option value="push">Changes</option>
+                      <option value="pull_request">Reviews (PRs)</option>
                       <option value="issues">Issues</option>
                     </select>
                   </div>
 
                   <div className="sm:col-span-3">
                     <select
-                      aria-label="Filter by processing status"
+                      aria-label="Filter by recap status"
                       value={statusFilter}
                       onChange={(e) => {
                         setStatusFilter(e.target.value as 'all' | ProcessingStatus);
@@ -330,32 +329,20 @@ export function TimelinePage() {
                       }}
                       className="min-h-[40px] w-full rounded-lg border border-[#252D24] bg-[#080908] px-3 py-2 text-sm text-[#F3F5EF] focus:outline-none focus:border-[#B8F34A]"
                     >
-                      <option value="all">All statuses</option>
+                      <option value="all">Any status</option>
                       <option value="summarized">Summarized</option>
-                      <option value="pending">Pending</option>
-                      <option value="recorded_without_summary">Raw only</option>
-                      <option value="failed">Failed</option>
+                      <option value="pending">Not summarized yet</option>
+                      <option value="recorded_without_summary">Saved (no recap)</option>
+                      <option value="failed">Couldn't summarize</option>
                     </select>
                   </div>
                 </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#252D24]">
                   <div className="flex items-center gap-3">
-                    <p className="text-xs text-[#929B90] font-mono tabular-nums">
-                      {filteredEvents.length} events · {clusters.length} clusters
+                    <p className="text-xs text-[#929B90] tabular-nums">
+                      {filteredEvents.length} {filteredEvents.length === 1 ? 'update' : 'updates'} · {clusters.length} work {clusters.length === 1 ? 'session' : 'sessions'}
                     </p>
-                    {viewMode === 'events' && (
-                      <button
-                        type="button"
-                        onClick={() => setShowAllJson((prev) => !prev)}
-                        className={`inline-flex items-center gap-1.5 text-xs font-mono whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
-                          showAllJson ? 'text-[#B8F34A]' : 'text-[#929B90] hover:text-[#FCFFEC]'
-                        }`}
-                      >
-                        <Code2 className="w-3.5 h-3.5" aria-hidden="true" />
-                        <span>{showAllJson ? 'Hide Metadata JSON' : 'Show Metadata JSON'}</span>
-                      </button>
-                    )}
                   </div>
 
                   <div className="flex items-center gap-1 p-0.5 rounded-lg bg-[#080908] border border-[#252D24]">
@@ -368,7 +355,7 @@ export function TimelinePage() {
                           : 'text-[#929B90] hover:text-[#FCFFEC]'
                       }`}
                     >
-                      Chronological Events
+                      All updates
                     </button>
                     <button
                       type="button"
@@ -379,7 +366,7 @@ export function TimelinePage() {
                           : 'text-[#929B90] hover:text-[#FCFFEC]'
                       }`}
                     >
-                      Inferred Clusters
+                      Work sessions
                     </button>
                   </div>
                 </div>
@@ -388,15 +375,15 @@ export function TimelinePage() {
               {filteredEvents.length === 0 ? (
                 <EmptyState
                   icon={<Search className="w-5 h-5" />}
-                  title="No matching activity events"
-                  description="Try clearing your search or choosing another repository filter."
+                  title="No matches"
+                  description="Try a different search, or clear the filters."
                 />
               ) : viewMode === 'events' ? (
                 <div className="space-y-4">
                   <div className="space-y-3">
                     {paginatedEvents.map((ev) => {
                       const repo = repoMap.get(ev.repositoryId);
-                      const isJsonOpen = showAllJson || expandedJsonIds.has(ev.id);
+                      const isJsonOpen = expandedJsonIds.has(ev.id);
                       const isCopied = copiedEventId === ev.id;
 
                       return (
@@ -415,15 +402,11 @@ export function TimelinePage() {
                                   {repo.fullName}
                                 </Link>
                               )}
-                              <span className="text-xs font-mono text-[#929B90] tabular-nums">
-                                {ev.branch}
-                                {ev.commitSha ? ` · ${ev.commitSha.slice(0, 7)}` : ''}
-                              </span>
                             </div>
 
                             <div className="flex items-center gap-3 shrink-0">
                               <ProcessingStatusLabel status={ev.processingStatus} />
-                              <span className="text-xs font-mono text-[#929B90] tabular-nums">
+                              <span className="text-xs text-[#929B90] tabular-nums">
                                 {formatShortDate(ev.occurredAt)}
                               </span>
                             </div>
@@ -432,17 +415,17 @@ export function TimelinePage() {
                           <h3 className="text-sm font-semibold text-[#FCFFEC]">{ev.title}</h3>
 
                           {ev.changedFiles.length > 0 && (
-                            <p className="text-xs font-mono text-[#929B90] break-all">
-                              Modified: {ev.changedFiles.slice(0, 8).join(', ')}
-                              {ev.changedFiles.length > 8
-                                ? ` +${ev.changedFiles.length - 8} more`
+                            <p className="text-xs text-[#929B90] break-all">
+                              Files changed: {ev.changedFiles.slice(0, 5).join(', ')}
+                              {ev.changedFiles.length > 5
+                                ? ` and ${ev.changedFiles.length - 5} more`
                                 : ''}
                             </p>
                           )}
 
                           <div className="pt-2 border-t border-[#252D24] flex flex-wrap items-center justify-between gap-2">
-                            <span className="text-[11px] font-mono text-[#929B90]">
-                              {ev.author ? `Author: ${ev.author}` : 'GitHub Webhook / History'}
+                            <span className="text-[11px] text-[#929B90]">
+                              {ev.author ? `By ${ev.author}` : 'From GitHub'}
                             </span>
 
                             <div className="flex items-center gap-3 shrink-0">
@@ -467,10 +450,11 @@ export function TimelinePage() {
                               <button
                                 type="button"
                                 onClick={() => toggleEventJson(ev.id)}
-                                className="inline-flex items-center gap-1 text-xs font-mono text-[#929B90] hover:text-[#B8F34A] whitespace-nowrap shrink-0 cursor-pointer"
+                                aria-expanded={isJsonOpen}
+                                className="inline-flex items-center gap-1 text-xs text-[#929B90] hover:text-[#B8F34A] whitespace-nowrap shrink-0 cursor-pointer"
                               >
                                 <Code2 className="w-3.5 h-3.5" aria-hidden="true" />
-                                <span>JSON</span>
+                                <span>Details</span>
                                 {isJsonOpen ? (
                                   <ChevronUp className="w-3 h-3" />
                                 ) : (
@@ -486,7 +470,7 @@ export function TimelinePage() {
                                   aria-label={`Open ${ev.title} on GitHub`}
                                   className="inline-flex items-center gap-1 text-xs text-[#929B90] hover:text-[#B8F34A] whitespace-nowrap shrink-0"
                                 >
-                                  <span>GitHub</span>
+                                  <span>View on GitHub</span>
                                   <ExternalLink className="w-3 h-3" aria-hidden="true" />
                                 </a>
                               )}
@@ -518,7 +502,7 @@ export function TimelinePage() {
 
                   {totalPages > 1 && (
                     <div className="flex items-center justify-between gap-3 pt-2">
-                      <span className="text-xs text-[#929B90] font-mono tabular-nums">
+                      <span className="text-xs text-[#929B90] tabular-nums">
                         Page {safePage} of {totalPages}
                       </span>
                       <div className="flex items-center gap-2">
@@ -545,7 +529,7 @@ export function TimelinePage() {
               ) : (
                 <div className="space-y-4">
                   <p className="text-xs text-[#929B90]">
-                    Activity clusters are inferred automatically from GitHub events occurring within 90 minutes on the same repository. They do not represent verified hours worked.
+                    Changes made within about 90 minutes of each other on the same project are grouped into a work session. This is an estimate, not a record of hours worked.
                   </p>
                   {clusters.map((cluster) => (
                     <article
@@ -562,7 +546,7 @@ export function TimelinePage() {
                           </Link>
                           <p className="text-xs text-[#B8F34A] mt-0.5">{cluster.label}</p>
                         </div>
-                        <span className="text-xs font-mono tabular-nums text-[#929B90] shrink-0">
+                        <span className="text-xs tabular-nums text-[#929B90] shrink-0">
                           {formatRelativeDate(cluster.endAt)} · {formatShortDate(cluster.endAt)}
                         </span>
                       </div>
@@ -574,8 +558,8 @@ export function TimelinePage() {
                             className="flex items-center justify-between gap-3 text-xs text-[#F3F5EF]"
                           >
                             <span className="truncate">{ev.title}</span>
-                            <span className="font-mono text-[#929B90] shrink-0">
-                              {ev.commitSha ? ev.commitSha.slice(0, 7) : ev.eventType}
+                            <span className="text-[#929B90] shrink-0">
+                              {formatShortDate(ev.occurredAt)}
                             </span>
                           </li>
                         ))}
@@ -591,10 +575,10 @@ export function TimelinePage() {
               {/* 7-Day Ingestion Pulse */}
               <div className="rounded-2xl border border-[#252D24] bg-[#121512] p-5">
                 <h2 className="text-sm font-display font-semibold text-[#FCFFEC]">
-                  7-Day Ingestion Pulse
+                  Last 7 days
                 </h2>
                 <p className="mt-0.5 text-xs text-[#929B90]">
-                  Events captured across your connected repositories.
+                  Number of updates each day.
                 </p>
 
                 <div className="mt-5 grid grid-cols-7 gap-2 items-end h-32">
@@ -645,12 +629,12 @@ export function TimelinePage() {
                   />
                 </svg>
                 <div className="min-w-0">
-                  <p className="text-xs font-mono text-[#929B90]">AI Summary Coverage</p>
+                  <p className="text-xs text-[#929B90]">Covered by AI recaps</p>
                   <p className="text-xl font-display font-bold tabular-nums text-[#FCFFEC]">
                     {coveragePct}%
                   </p>
                   <p className="text-xs text-[#929B90] tabular-nums">
-                    {summarizedCount} of {activityEvents.length} events summarized
+                    {summarizedCount} of {activityEvents.length} updates
                   </p>
                 </div>
               </div>
@@ -659,7 +643,7 @@ export function TimelinePage() {
               <div className="rounded-2xl border border-[#252D24] bg-[#121512] p-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <h2 className="text-sm font-display font-semibold text-[#FCFFEC]">
-                    Filter by Repository
+                    Show one project
                   </h2>
                   {repoFilter !== 'all' && (
                     <button
@@ -689,7 +673,7 @@ export function TimelinePage() {
                           : 'text-[#929B90] hover:text-[#FCFFEC] hover:bg-[#080908]'
                       }`}
                     >
-                      <span>All repositories</span>
+                      <span>All projects</span>
                       <span className="font-mono tabular-nums">{activityEvents.length}</span>
                     </button>
                   </li>

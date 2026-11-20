@@ -119,7 +119,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
 
   const subheading =
     mode === 'signup'
-      ? 'Connect your GitHub repositories and keep project history current automatically.'
+      ? 'Connect your GitHub projects and BuildLog will keep track of the work for you.'
       : mode === 'login'
       ? 'Review automated GitHub activity clusters and resume project memory.'
       : 'Enter your account email and we will send a password reset link.';

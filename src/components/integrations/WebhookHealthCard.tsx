@@ -32,28 +32,28 @@ const LEVEL_STYLES: Record<
   }
 > = {
   healthy: {
-    badgeLabel: 'Live & Verified',
+    badgeLabel: 'Working',
     icon: <CheckCircle2 className="w-5 h-5 text-[#B8F34A]" aria-hidden="true" />,
     borderClass: 'border-[#B8F34A]/35',
     iconWrapClass: 'bg-[#B8F34A]/10 border-[#B8F34A]/30',
     textAccentClass: 'text-[#B8F34A]',
   },
   awaiting_events: {
-    badgeLabel: 'Armed · Awaiting Events',
+    badgeLabel: 'Ready',
     icon: <Radio className="w-5 h-5 text-[#B8F34A]" aria-hidden="true" />,
     borderClass: 'border-[#252D24]',
     iconWrapClass: 'bg-[#B8F34A]/10 border-[#252D24]',
     textAccentClass: 'text-[#B8F34A]',
   },
   degraded: {
-    badgeLabel: 'Attention Needed',
+    badgeLabel: 'Needs attention',
     icon: <AlertTriangle className="w-5 h-5 text-amber-300" aria-hidden="true" />,
     borderClass: 'border-amber-500/40',
     iconWrapClass: 'bg-amber-950/40 border-amber-500/40',
     textAccentClass: 'text-amber-300',
   },
   setup_required: {
-    badgeLabel: 'Not Connected',
+    badgeLabel: 'Not connected',
     icon: <Plug className="w-5 h-5 text-amber-300" aria-hidden="true" />,
     borderClass: 'border-[#252D24]',
     iconWrapClass: 'bg-amber-950/30 border-amber-500/30',
@@ -93,7 +93,7 @@ export function WebhookHealthCard({
     if (!date) {
       return {
         primary: emptyText,
-        secondary: 'No timestamp recorded yet',
+        secondary: '',
       };
     }
     return {
@@ -105,12 +105,12 @@ export function WebhookHealthCard({
     };
   };
 
-  const lastSyncedInfo = formatTimestampDisplay(health.latestSyncedAt, 'Never synced');
-  const lastWebhookInfo = formatTimestampDisplay(health.latestWebhookAt, 'No events yet');
+  const lastSyncedInfo = formatTimestampDisplay(health.latestSyncedAt, 'Not yet');
+  const lastWebhookInfo = formatTimestampDisplay(health.latestWebhookAt, 'Nothing yet');
 
   return (
     <section
-      aria-label="GitHub webhook connectivity health"
+      aria-label="GitHub connection status"
       className={`rounded-2xl border ${style.borderClass} bg-[#121512] p-5 sm:p-6 space-y-4`}
     >
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -123,12 +123,12 @@ export function WebhookHealthCard({
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
               <h2 className="text-sm sm:text-base font-display font-semibold text-[#FCFFEC]">
-                GitHub Sync &amp; Webhook Health
+                GitHub connection
               </h2>
               <span aria-hidden="true" className="text-[#5F665D]">
                 ·
               </span>
-              <span className={`text-xs font-mono font-medium ${style.textAccentClass}`}>
+              <span className={`text-xs font-medium ${style.textAccentClass}`}>
                 {health.headline}
               </span>
             </div>
@@ -146,39 +146,40 @@ export function WebhookHealthCard({
             icon={<RefreshCw className="w-3.5 h-3.5" />}
             onClick={() => void refreshGitHubStatusAndHealth()}
           >
-            Refresh Status
+            Check again
           </Button>
           {variant === 'dashboard' ? (
             <Link to="/integrations" className={getButtonClasses('ghost', 'sm')}>
-              <span>Manage Connections</span>
+              <span>Manage projects</span>
               <ArrowRight className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
             </Link>
           ) : onOpenDiagnostics ? (
             <Button variant="ghost" size="sm" onClick={onOpenDiagnostics}>
-              <span>Advanced Diagnostics</span>
+              <span>Technical details</span>
               <ArrowRight className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
             </Button>
           ) : null}
         </div>
       </div>
 
-      {/* 4-Column Real-Time Telemetry Row */}
+      {/* Detailed status row: only shown in the technical details section */}
+      {variant === 'integrations' && (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="rounded-xl border border-[#252D24] bg-[#080908] px-4 py-3 space-y-1">
-          <p className="text-[11px] font-mono text-[#929B90]">Connectivity Health</p>
+          <p className="text-[11px] text-[#929B90]">Status</p>
           <p className={`text-sm font-semibold ${style.textAccentClass}`}>
             {style.badgeLabel}
           </p>
-          <p className="text-[11px] font-mono text-[#929B90] tabular-nums">
-            {health.activeReposCount} active{' '}
-            {health.activeReposCount === 1 ? 'repo' : 'repos'} ·{' '}
+          <p className="text-[11px] text-[#929B90] tabular-nums">
+            {health.activeReposCount}{' '}
+            {health.activeReposCount === 1 ? 'project' : 'projects'} ·{' '}
             {health.connectedInstallationsCount}{' '}
             {health.connectedInstallationsCount === 1 ? 'account' : 'accounts'}
           </p>
         </div>
 
         <div className="rounded-xl border border-[#252D24] bg-[#080908] px-4 py-3 space-y-1">
-          <p className="text-[11px] font-mono text-[#929B90]">Last Synced</p>
+          <p className="text-[11px] text-[#929B90]">Last updated</p>
           <p className="text-sm font-semibold text-[#FCFFEC] tabular-nums">
             {lastSyncedInfo.primary}
           </p>
@@ -188,7 +189,7 @@ export function WebhookHealthCard({
         </div>
 
         <div className="rounded-xl border border-[#252D24] bg-[#080908] px-4 py-3 space-y-1">
-          <p className="text-[11px] font-mono text-[#929B90]">Last Webhook Event</p>
+          <p className="text-[11px] text-[#929B90]">Last change received</p>
           <p className="text-sm font-semibold text-[#FCFFEC] tabular-nums">
             {lastWebhookInfo.primary}
           </p>
@@ -198,23 +199,24 @@ export function WebhookHealthCard({
         </div>
 
         <div className="rounded-xl border border-[#252D24] bg-[#080908] px-4 py-3 space-y-1">
-          <p className="text-[11px] font-mono text-[#929B90]">Webhook Deliveries</p>
+          <p className="text-[11px] text-[#929B90]">Updates received (webhooks)</p>
           <p className="text-sm font-semibold text-[#FCFFEC] tabular-nums">
             {health.deliveryCount} recent
             {health.failedOrUnmappedCount > 0 ? (
               <span className="text-amber-300">
                 {' '}
-                · {health.failedOrUnmappedCount} flagged
+                · {health.failedOrUnmappedCount} with problems
               </span>
             ) : null}
           </p>
           <p className="text-[11px] font-mono text-[#929B90] tabular-nums truncate">
             {health.lastCheckedAt
               ? `Checked ${formatRelativeDate(health.lastCheckedAt)}`
-              : 'Auto-checking every 15s'}
+              : 'Checked automatically'}
           </p>
         </div>
       </div>
+      )}
     </section>
   );
 }

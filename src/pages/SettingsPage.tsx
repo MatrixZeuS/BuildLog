@@ -70,9 +70,9 @@ export function SettingsPage() {
         optInCodeDiff,
         retentionDays,
       });
-      showToast('Profile and privacy preferences saved.', 'success');
+      showToast('Saved.', 'success');
     } catch (error) {
-      showToast(parseFriendlyFirestoreError(error, 'Failed to save settings.'), 'error');
+      showToast(parseFriendlyFirestoreError(error, "Couldn't save. Please try again."), 'error');
     } finally {
       setSavingProfile(false);
       setSavingPrivacy(false);
@@ -102,9 +102,9 @@ export function SettingsPage() {
     setSavingProfile(true);
     try {
       await updateUserDisplayName(user, displayName);
-      showToast('Profile display name updated.', 'success');
+      showToast('Name updated.', 'success');
     } catch (error) {
-      showToast(parseFriendlyFirestoreError(error, 'Failed to update profile.'), 'error');
+      showToast(parseFriendlyFirestoreError(error, "Couldn't update your name. Please try again."), 'error');
     } finally {
       setSavingProfile(false);
     }
@@ -119,10 +119,10 @@ export function SettingsPage() {
         optInCodeDiff,
         retentionDays,
       });
-      showToast('Privacy and retention preferences saved.', 'success');
+      showToast('Privacy settings saved.', 'success');
     } catch (error) {
       showToast(
-        parseFriendlyFirestoreError(error, 'Failed to save privacy settings.'),
+        parseFriendlyFirestoreError(error, "Couldn't save privacy settings. Please try again."),
         'error'
       );
     } finally {
@@ -142,7 +142,7 @@ export function SettingsPage() {
     const dateStamp = new Date().toISOString().slice(0, 10);
     const filename = `buildlog-export-${dateStamp}.json`;
     downloadTextFile(filename, JSON.stringify(payload, null, 2), 'application/json;charset=utf-8');
-    showToast(`Exported ${filename}`, 'success');
+    showToast(`Downloaded ${filename}`, 'success');
   };
 
   const handleSendVerification = async () => {
@@ -152,7 +152,7 @@ export function SettingsPage() {
       await sendEmailVerification(user);
       showToast('Verification email sent. Check your inbox.', 'success');
     } catch {
-      showToast('Could not send verification email right now.', 'error');
+      showToast("Couldn't send the email right now. Please try again later.", 'error');
     } finally {
       setSendingVerify(false);
     }
@@ -164,10 +164,10 @@ export function SettingsPage() {
     try {
       await deleteAllUserBuildLogData(user.uid);
       await purgeServerAccountData().catch(() => {});
-      showToast('All connected integrations, repositories, events, and memories deleted.', 'info');
+      showToast('All your BuildLog data has been deleted.', 'info');
       setDeleteDialogOpen(false);
     } catch (error) {
-      showToast(parseFriendlyFirestoreError(error, 'Failed to delete workspace data.'), 'error');
+      showToast(parseFriendlyFirestoreError(error, "Couldn't delete your data. Please try again."), 'error');
     } finally {
       setDeletingData(false);
     }
@@ -180,7 +180,7 @@ export function SettingsPage() {
       showToast('Signed out of BuildLog.', 'info');
       navigate('/login', { replace: true });
     } catch {
-      showToast('Unable to sign out right now.', 'error');
+      showToast("Couldn't sign out. Please try again.", 'error');
       setSigningOut(false);
     }
   };
@@ -190,9 +190,9 @@ export function SettingsPage() {
 
   return (
     <AppShell
-      title="Settings & Privacy"
+      title="Settings"
       breadcrumbs={[{ label: 'Workspace' }, { label: 'Settings' }]}
-      subtitle="Manage your profile, metadata-only privacy defaults, JSON data export, or account purge."
+      subtitle="Your profile, privacy choices, and your data."
       actions={
         <Button
           variant="primary"
@@ -201,22 +201,22 @@ export function SettingsPage() {
           icon={<Save className="w-3.5 h-3.5" />}
           onClick={() => void handleSaveAll()}
         >
-          Save Changes
+          Save
         </Button>
       }
     >
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start max-w-5xl">
         {/* Left Jump Navigation */}
         <aside className="lg:col-span-3 rounded-2xl border border-[#252D24] bg-[#121512] p-3 lg:sticky lg:top-6">
-          <p className="px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider text-[#929B90]">
+          <p className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-[#929B90]">
             Sections
           </p>
           <nav aria-label="Settings sections" className="space-y-1 text-xs font-medium">
             {[
-              { href: '#profile', label: 'User Profile' },
-              { href: '#privacy', label: 'Privacy & Retention' },
-              { href: '#summary', label: 'Stored Workspace' },
-              { href: '#data-actions', label: 'Export & Danger Zone' },
+              { href: '#profile', label: 'Profile' },
+              { href: '#privacy', label: 'Privacy' },
+              { href: '#summary', label: 'Account' },
+              { href: '#data-actions', label: 'Your data' },
             ].map((item) => (
               <a
                 key={item.href}
@@ -235,15 +235,15 @@ export function SettingsPage() {
           <section id="profile" className="rounded-2xl border border-[#252D24] bg-[#121512] p-6">
             <div className="flex items-center gap-2">
               <User className="w-4 h-4 text-[#B8F34A]" aria-hidden="true" />
-              <h2 className="text-base font-display font-semibold text-[#FCFFEC]">User Profile</h2>
+              <h2 className="text-base font-display font-semibold text-[#FCFFEC]">Profile</h2>
             </div>
             <p className="mt-1 text-xs text-[#929B90]">
-              Your display name is shown across your workspace and personal data exports.
+              The name shown around BuildLog.
             </p>
 
             <form onSubmit={handleSaveProfile} className="mt-5 space-y-4" noValidate>
               <Input
-                label="Display Name"
+                label="Your name"
                 required
                 maxLength={SCHEMA_LIMITS.DISPLAY_NAME_MAX}
                 value={displayName}
@@ -252,11 +252,11 @@ export function SettingsPage() {
               />
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-[#FCFFEC]">Account Email</label>
+                <label className="text-sm font-medium text-[#FCFFEC]">Email</label>
                 <div className="min-h-[42px] rounded-lg border border-[#252D24] bg-[#080908] px-3.5 py-2.5 text-sm text-[#929B90] flex items-center justify-between gap-2">
                   <span className="truncate">{email}</span>
                   {user?.emailVerified ? (
-                    <span className="text-xs font-mono text-[#B8F34A] shrink-0">Verified</span>
+                    <span className="text-xs text-[#B8F34A] shrink-0">Verified</span>
                   ) : (
                     <button
                       type="button"
@@ -289,11 +289,11 @@ export function SettingsPage() {
             <div className="flex items-center gap-2">
               <Shield className="w-4 h-4 text-[#B8F34A]" aria-hidden="true" />
               <h2 className="text-base font-display font-semibold text-[#FCFFEC]">
-                Privacy &amp; Data Retention
+                Privacy
               </h2>
             </div>
             <p className="mt-1 text-xs text-[#929B90] leading-relaxed">
-              By default, BuildLog ingests repository metadata only (commit titles, branch names, file paths, PRs, and issues) without storing full source code snapshots.
+              BuildLog saves short descriptions of your work (titles, dates, file names, reviews and issues). It never saves your actual code.
             </p>
 
             <form onSubmit={handleSavePrivacy} className="mt-5 space-y-4">
@@ -306,24 +306,24 @@ export function SettingsPage() {
                 />
                 <div>
                   <p className="text-sm font-medium text-[#FCFFEC]">
-                    Opt in to extended diff context during summarization
+                    Let AI recaps look at small snippets of changed code
                   </p>
                   <p className="mt-0.5 text-xs text-[#929B90]">
-                    Disabled by default. When enabled, future optional diff inspection may include bounded patch context during summary generation.
+                    Off by default. When on, AI recaps may read short excerpts of what changed to write better summaries.
                   </p>
                 </div>
               </label>
 
               <Select
-                label="Activity Retention Window"
+                label="Keep activity for"
                 value={String(retentionDays)}
                 onChange={(e) => setRetentionDays(Number(e.target.value))}
               >
                 <option value="30">30 days</option>
                 <option value="90">90 days</option>
                 <option value="180">180 days</option>
-                <option value="365">365 days (Default)</option>
-                <option value="730">730 days</option>
+                <option value="365">1 year (default)</option>
+                <option value="730">2 years</option>
               </Select>
 
               <div className="pt-1 flex justify-end">
@@ -333,7 +333,7 @@ export function SettingsPage() {
                   loading={savingPrivacy}
                   icon={<Save className="w-4 h-4" />}
                 >
-                  Save Privacy Settings
+                  Save privacy settings
                 </Button>
               </div>
             </form>
@@ -342,22 +342,22 @@ export function SettingsPage() {
           {/* Account Information */}
           <section id="summary" className="rounded-2xl border border-[#252D24] bg-[#121512] p-6">
             <h2 className="text-base font-display font-semibold text-[#FCFFEC]">
-              Stored Workspace Summary
+              Account
             </h2>
             <dl className="mt-4 divide-y divide-[#252D24] text-sm">
               <div className="py-3 flex items-center justify-between gap-4">
-                <dt className="text-[#929B90]">User ID</dt>
+                <dt className="text-[#929B90]">Account ID (for support)</dt>
                 <dd className="font-mono text-xs text-[#FCFFEC] truncate max-w-xs">{user?.uid}</dd>
               </div>
               <div className="py-3 flex items-center justify-between gap-4">
-                <dt className="text-[#929B90]">Account Created</dt>
+                <dt className="text-[#929B90]">Member since</dt>
                 <dd className="tabular-nums text-[#FCFFEC]">{createdText}</dd>
               </div>
               <div className="py-3 flex items-center justify-between gap-4">
-                <dt className="text-[#929B90]">Tracked Records</dt>
-                <dd className="font-mono tabular-nums text-xs text-[#FCFFEC]">
-                  {integrations.length} integrations · {repositories.length} repos ·{' '}
-                  {activityEvents.length} events · {activitySummaries.length} summaries
+                <dt className="text-[#929B90]">Saved in BuildLog</dt>
+                <dd className="tabular-nums text-xs text-[#FCFFEC]">
+                  {repositories.length} {repositories.length === 1 ? 'project' : 'projects'} ·{' '}
+                  {activityEvents.length} updates · {activitySummaries.length} recaps
                 </dd>
               </div>
             </dl>
@@ -368,10 +368,10 @@ export function SettingsPage() {
             <section className="rounded-2xl border border-[#252D24] bg-[#121512] p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h2 className="text-base font-display font-semibold text-[#FCFFEC]">
-                  Export Personal Data
+                  Download your data
                 </h2>
                 <p className="mt-1 text-xs text-[#929B90] leading-relaxed">
-                  Download all your integrations, repositories, activity events, summaries, and project memory as JSON.
+                  Get a copy of everything BuildLog has saved for you (a .json file).
                 </p>
               </div>
               <Button
@@ -379,17 +379,17 @@ export function SettingsPage() {
                 icon={<Download className="w-4 h-4" />}
                 onClick={handleExportJson}
               >
-                Export JSON
+                Download
               </Button>
             </section>
 
             <section className="rounded-2xl border border-red-900/50 bg-[#121512] p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h2 className="text-base font-display font-semibold text-[#FCFFEC]">
-                  Delete All BuildLog Data
+                  Delete all your data
                 </h2>
                 <p className="mt-1 text-xs text-[#929B90] leading-relaxed">
-                  Permanently remove all GitHub installations, repositories, activity events, summaries, and project memories.
+                  Permanently remove everything BuildLog has saved for you. Your projects on GitHub are not affected.
                 </p>
               </div>
               <Button
@@ -397,15 +397,15 @@ export function SettingsPage() {
                 icon={<Trash2 className="w-4 h-4" />}
                 onClick={() => setDeleteDialogOpen(true)}
               >
-                Delete Data
+                Delete everything
               </Button>
             </section>
 
             <section className="rounded-2xl border border-[#252D24] bg-[#121512] p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h2 className="text-base font-display font-semibold text-[#FCFFEC]">Sign Out</h2>
+                <h2 className="text-base font-display font-semibold text-[#FCFFEC]">Sign out</h2>
                 <p className="mt-1 text-xs text-[#929B90]">
-                  End your active BuildLog session on this browser.
+                  Sign out of BuildLog on this browser.
                 </p>
               </div>
               <Button
@@ -414,7 +414,7 @@ export function SettingsPage() {
                 icon={<LogOut className="w-4 h-4" />}
                 onClick={handleSignOut}
               >
-                Sign Out
+                Sign out
               </Button>
             </section>
           </div>
@@ -426,9 +426,9 @@ export function SettingsPage() {
         onClose={() => setDeleteDialogOpen(false)}
         onConfirm={handleDeleteAllData}
         loading={deletingData}
-        title="Delete all BuildLog workspace data?"
-        message="This permanently removes your connected GitHub integrations, repositories, activity events, AI summaries, and project memories from BuildLog. Your GitHub repositories themselves are untouched."
-        confirmLabel="Permanently Delete Data"
+        title="Delete all your BuildLog data?"
+        message="This permanently removes your projects, updates, recaps and summaries from BuildLog. It can't be undone. Your projects on GitHub are not affected."
+        confirmLabel="Delete everything"
       />
     </AppShell>
   );

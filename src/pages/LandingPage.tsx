@@ -34,93 +34,88 @@ interface ShowcaseScenario {
 const SHOWCASE_SCENARIOS: ShowcaseScenario[] = [
   {
     id: 'push',
-    label: 'Push Event',
-    eventTitle: 'POST /api/webhooks/github · push',
-    branchOrRef: 'feature/webhook-verify · 8b4e11a',
+    label: 'New changes',
+    eventTitle: 'Maya saved new work to GitHub',
+    branchOrRef: '2 changes · just now',
     ingestionLines: [
-      { tag: 'VERIFY', detail: 'HMAC-SHA256 X-Hub-Signature-256 verified against raw body', accent: 'lime' },
-      { tag: 'DEDUPE', detail: 'X-GitHub-Delivery 9d24c10e-7f1a recorded once', accent: 'neutral' },
-      { tag: 'FILES', detail: 'Modified: server.ts, src/server/webhookStore.ts, src/utils/githubNormalization.ts', accent: 'neutral' },
-      { tag: 'FACT', detail: '2 commits pushed to feature/webhook-verify by @maya-dev', accent: 'lime' },
-      { tag: 'INFERRED', detail: 'Clustered into 28-minute webhook hardening burst (inferred grouping)', accent: 'amber' },
+      { tag: 'WHAT', detail: 'Added a "Forgot password" link to the sign-in page', accent: 'lime' },
+      { tag: 'WHAT', detail: 'Fixed the checkout button not working on phones', accent: 'lime' },
+      { tag: 'WHERE', detail: 'Sign-in page, checkout page', accent: 'neutral' },
+      { tag: 'GROUPED', detail: 'Part of a 30-minute burst of work on sign-in (our best guess)', accent: 'amber' },
     ],
-    handoffHeading: 'Resume Brief · acme/ledger-core',
-    handoffContent: `# Resume Project Context: acme/ledger-core
+    handoffHeading: 'Project summary · Online shop',
+    handoffContent: `# Where things stand: Online shop
 
-## 1. Project Objective
-Deterministic ledger reconciliation & webhook ingestion service.
+## Goal
+Let customers buy from our shop on any device.
 
-## 3. Recent Verified Commits
-- [feature/webhook-verify] Verify HMAC-SHA256 raw payload before parsing (8b4e11a)
-- [feature/webhook-verify] Deduplicate X-GitHub-Delivery IDs atomically (f309c2d)
+## What changed recently
+- Added a "Forgot password" link to the sign-in page
+- Fixed the checkout button not working on phones
 
-## 4. Modified Code Areas
-- src/server (2 files)
-- src/utils (1 file)`,
+## Parts of the project that changed
+- Sign-in
+- Checkout`,
   },
   {
     id: 'pr',
-    label: 'Pull Request',
-    eventTitle: 'POST /api/webhooks/github · pull_request',
-    branchOrRef: 'PR #42 · open',
+    label: 'Work waiting for review',
+    eventTitle: 'Maya asked for a review (pull request #42)',
+    branchOrRef: 'Waiting for review',
     ingestionLines: [
-      { tag: 'VERIFY', detail: 'HMAC-SHA256 signature valid · Read-only installation #54321098', accent: 'lime' },
-      { tag: 'PR #42', detail: 'State: open · "Add raw-body signature verification middleware"', accent: 'lime' },
-      { tag: 'BRANCH', detail: 'feature/webhook-verify -> main', accent: 'neutral' },
-      { tag: 'NEXT', detail: 'Suggested action: Review PR #42 and test duplicate delivery replay', accent: 'amber' },
+      { tag: 'REVIEW', detail: '"Add password reset emails" is ready for someone to check', accent: 'lime' },
+      { tag: 'STATUS', detail: 'Not merged yet, so it isn\'t live', accent: 'neutral' },
+      { tag: 'NEXT', detail: 'Suggested: review #42 before the next release', accent: 'amber' },
     ],
-    handoffHeading: 'Open Pull Requests · acme/ledger-core',
-    handoffContent: `## 6. Open Pull Requests (Verified GitHub Facts)
-- #42: Add raw-body signature verification middleware (feature/webhook-verify)
+    handoffHeading: 'Waiting for review · Online shop',
+    handoffContent: `## Waiting for review
+- #42: Add password reset emails
 
-## 9. Suggested Next Actions
-1. Review open pull request #42 before merging into main
-2. Confirm integration tests cover invalid signature HTTP 401 path`,
+## Suggested next steps
+1. Review #42 so it can go live
+2. Test the reset email on a phone`,
   },
   {
     id: 'issue',
-    label: 'Issue Radar',
-    eventTitle: 'POST /api/webhooks/github · issues',
-    branchOrRef: 'Issue #19 · open',
+    label: 'Problems reported',
+    eventTitle: 'A problem was reported (issue #19)',
+    branchOrRef: 'Still open',
     ingestionLines: [
-      { tag: 'VERIFY', detail: 'HMAC-SHA256 signature valid · delivery 410fa9b2', accent: 'lime' },
-      { tag: 'ISSUE', detail: '#19 opened: "Blocker: retry queue drops events on restart"', accent: 'amber' },
-      { tag: 'RULE', detail: 'Flagged in Known Blockers strictly because issue #19 is open', accent: 'lime' },
-      { tag: 'LINK', detail: 'https://github.com/acme/ledger-core/issues/19 preserved', accent: 'neutral' },
+      { tag: 'PROBLEM', detail: '#19: "Orders sometimes go missing after a restart"', accent: 'amber' },
+      { tag: 'BLOCKER', detail: 'Listed as a blocker because #19 is still open on GitHub', accent: 'lime' },
+      { tag: 'LINK', detail: 'Links straight to the issue on GitHub', accent: 'neutral' },
     ],
-    handoffHeading: 'Evidence-Backed Blockers · acme/ledger-core',
-    handoffContent: `## 5. Open Issues
-- #19: Blocker: retry queue drops events on restart
+    handoffHeading: 'Open problems · Online shop',
+    handoffContent: `## Open problems
+- #19: Orders sometimes go missing after a restart
 
-## 7. Known Blockers (Evidence-Backed Only)
-- Issue #19: Blocker: retry queue drops events on restart
+## Blockers
+- #19 is still open
 
-> Note: BuildLog never invents blockers without supporting GitHub evidence.`,
+> BuildLog only lists a blocker when GitHub shows a real open problem.`,
   },
   {
     id: 'memory',
-    label: 'Project Memory',
-    eventTitle: 'Synthesized Markdown Handoff',
-    branchOrRef: 'Updated automatically',
+    label: 'Project summary',
+    eventTitle: 'Your project summary, always up to date',
+    branchOrRef: 'Updates automatically',
     ingestionLines: [
-      { tag: 'MERGE', detail: 'Combined repository metadata, 18 ingested events, and 3 AI summaries', accent: 'lime' },
-      { tag: 'SPLIT', detail: 'Verified GitHub commits kept separate from Gemini inferences', accent: 'lime' },
-      { tag: 'PRIVACY', detail: 'Metadata-only ingestion: no full source code snapshots stored', accent: 'neutral' },
-      { tag: 'EXPORT', detail: 'Ready to paste into Cursor, Claude Code, or Markdown docs', accent: 'lime' },
+      { tag: 'COMBINES', detail: 'Recent changes, reviews and problems in one place', accent: 'lime' },
+      { tag: 'HONEST', detail: 'Facts from GitHub are kept apart from AI suggestions', accent: 'lime' },
+      { tag: 'PRIVATE', detail: 'Only titles and file names are saved, never your code', accent: 'neutral' },
+      { tag: 'SHARE', detail: 'Copy it into a doc, a chat or an AI assistant', accent: 'lime' },
     ],
-    handoffHeading: 'acme-ledger-core-resume-context.md',
-    handoffContent: `# Resume Project Context: acme/ledger-core
+    handoffHeading: 'online-shop-summary.md',
+    handoffContent: `# Where things stand: Online shop
 
-> Generated by BuildLog from automated GitHub repository activity.
+## Facts from GitHub
+- 2 changes saved today
+- 1 piece of work waiting for review (#42)
+- 1 open problem (#19)
 
-## Verified GitHub Facts
-- 2 commits pushed to feature/webhook-verify
-- Open PR #42 awaiting review
-- Open Issue #19 flagged as blocker
-
-## Suggested Next Actions
-1. Review open PR #42: Add raw-body signature verification middleware
-2. Triage open issue #19: retry queue persistence`,
+## Suggested next steps
+1. Review #42: Add password reset emails
+2. Look into #19: orders going missing`,
   },
 ];
 
@@ -162,13 +157,13 @@ export function LandingPage() {
             className="hidden md:flex items-center gap-7 text-sm font-medium text-[#929B90]"
           >
             <a href="#preview" className="hover:text-[#FCFFEC] transition-colors whitespace-nowrap shrink-0">
-              Workflow
+              How it works
             </a>
             <a href="#architecture" className="hover:text-[#FCFFEC] transition-colors whitespace-nowrap shrink-0">
-              Architecture
+              Features
             </a>
             <a href="#memory-bento" className="hover:text-[#FCFFEC] transition-colors whitespace-nowrap shrink-0">
-              Project Memory
+              Summaries
             </a>
             <a href="#privacy" className="hover:text-[#FCFFEC] transition-colors whitespace-nowrap shrink-0">
               Privacy
@@ -185,7 +180,7 @@ export function LandingPage() {
               to={user ? '/dashboard' : '/signup'}
               className={getButtonClasses('primary', 'sm')}
             >
-              <span>{user ? 'Open Workspace' : 'Connect GitHub'}</span>
+              <span>{user ? 'Open BuildLog' : 'Get started'}</span>
             </Link>
           </div>
         </div>
@@ -202,22 +197,22 @@ export function LandingPage() {
 
           <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-24 pb-14 text-center">
             <p className="text-xs font-mono uppercase tracking-[0.16em] text-[#B8F34A]">
-              Automated GitHub Memory · Evidence-Grounded Context
+              A diary for your projects that writes itself
             </p>
 
             <h1
               className="mt-5 font-display font-bold tracking-tight text-[#FCFFEC] leading-[1.06]"
               style={{ fontSize: 'clamp(2.35rem, 4.5vw, 3.85rem)', textWrap: 'balance' }}
             >
-              Every commit tracked.
+              Always know where
               <br />
-              Every change remembered.
+              your project stands.
               <br />
-              <span className="text-[#B8F34A]">Your history, on autopilot.</span>
+              <span className="text-[#B8F34A]">No notes needed.</span>
             </h1>
 
             <p className="mt-6 text-base sm:text-lg text-[#929B90] leading-relaxed max-w-2xl mx-auto">
-              Connect a read-only GitHub App to capture pushes, pull requests, and issues automatically. BuildLog separates verified GitHub evidence from metadata inferences and keeps a ready-to-paste Resume Project brief current.
+              Connect your project on GitHub once. BuildLog quietly keeps track of every change, review and reported problem, and turns it into a short, plain-English summary you can read or share anytime.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3.5">
@@ -226,16 +221,16 @@ export function LandingPage() {
                 className={getButtonClasses('primary', 'lg')}
               >
                 <GitBranch className="w-4 h-4 shrink-0" aria-hidden="true" />
-                <span>{user ? 'Go to Workspace' : 'Connect GitHub Free'}</span>
+                <span>{user ? 'Open BuildLog' : 'Get started free'}</span>
               </Link>
               <a href="#preview" className={getButtonClasses('secondary', 'lg')}>
                 <Zap className="w-4 h-4 shrink-0 text-[#B8F34A]" aria-hidden="true" />
-                <span>Interactive Preview</span>
+                <span>See an example</span>
               </a>
             </div>
 
-            <p className="mt-5 text-xs font-mono text-[#929B90]">
-              Read-only GitHub App · HMAC-SHA256 webhooks · Metadata-only by default
+            <p className="mt-5 text-xs text-[#929B90]">
+              Read-only access · Your code is never stored · Free to start
             </p>
           </div>
 
@@ -246,7 +241,7 @@ export function LandingPage() {
               <div className="px-4 sm:px-5 py-3 border-b border-[#252D24] bg-[#0D0F0D] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <span className="text-xs font-mono text-[#929B90] truncate">
-                    Example Preview · acme/ledger-core
+                    Example · an online shop project
                   </span>
                 </div>
 
@@ -273,10 +268,10 @@ export function LandingPage() {
                 {/* Left Pane: Automated Webhook Ingestion */}
                 <div className="lg:col-span-6 p-5 sm:p-6 space-y-4">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-mono text-[#B8F34A] truncate">
+                    <span className="text-xs font-medium text-[#B8F34A] truncate">
                       {activeScenario.eventTitle}
                     </span>
-                    <span className="text-xs font-mono text-[#929B90] shrink-0">
+                    <span className="text-xs text-[#929B90] shrink-0">
                       {activeScenario.branchOrRef}
                     </span>
                   </div>
@@ -298,7 +293,7 @@ export function LandingPage() {
                         >
                           {line.tag}
                         </span>
-                        <span className="text-[#F3F5EF]/90 leading-relaxed font-mono text-[11px]">
+                        <span className="text-[#F3F5EF]/90 leading-relaxed text-xs">
                           {line.detail}
                         </span>
                       </div>
@@ -310,7 +305,7 @@ export function LandingPage() {
                 <div className="lg:col-span-6 p-5 sm:p-6 flex flex-col justify-between bg-[#0B0D0B]">
                   <div>
                     <div className="flex items-center justify-between gap-3 mb-3">
-                      <span className="text-xs font-mono text-[#FCFFEC] truncate">
+                      <span className="text-xs font-medium text-[#FCFFEC] truncate">
                         {activeScenario.handoffHeading}
                       </span>
                       <button
@@ -326,7 +321,7 @@ export function LandingPage() {
                         ) : (
                           <>
                             <Copy className="w-3.5 h-3.5" aria-hidden="true" />
-                            <span>Copy Brief</span>
+                            <span>Copy summary</span>
                           </>
                         )}
                       </button>
@@ -337,8 +332,8 @@ export function LandingPage() {
                     </pre>
                   </div>
 
-                  <p className="mt-4 text-[11px] text-[#929B90] font-mono">
-                    Every line in Resume Context traces directly to stored repository events or explicitly labeled inferences.
+                  <p className="mt-4 text-[11px] text-[#929B90]">
+                    Everything in the summary comes from real activity on GitHub. Guesses are clearly labelled.
                   </p>
                 </div>
               </div>
@@ -350,13 +345,13 @@ export function LandingPage() {
         <section className="border-b border-[#252D24] bg-[#0A0C0A]">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 text-center space-y-5">
             <p className="text-xs font-mono uppercase tracking-[0.16em] text-[#B8F34A]">
-              The Context-Switching Tax
+              The problem
             </p>
             <h2 className="text-2xl sm:text-3xl font-display font-bold tracking-tight text-[#FCFFEC] leading-snug">
-              &ldquo;No developer should spend Monday morning parsing 40 git commits, stale PR threads, and closed issues just to remember where a project left off.&rdquo;
+              &ldquo;Nobody should spend Monday morning digging through last week's work just to remember where a project left off.&rdquo;
             </h2>
             <p className="text-sm sm:text-base text-[#929B90] leading-relaxed max-w-2xl mx-auto">
-              Manual dev logs fall out of date the moment shipping gets busy. BuildLog observes your repository activity passively and keeps a verified, portable project memory ready whenever you return.
+              Notes and status updates go stale as soon as things get busy. BuildLog keeps an up-to-date summary for you in the background, ready whenever you or your team need it.
             </p>
           </div>
         </section>
@@ -366,35 +361,35 @@ export function LandingPage() {
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
             <div className="max-w-2xl">
               <p className="text-xs font-mono uppercase tracking-[0.16em] text-[#B8F34A]">
-                Automation Pipeline
+                How it works
               </p>
               <h2 className="mt-2 text-2xl sm:text-3xl font-display font-bold tracking-tight text-[#FCFFEC]">
-                Zero manual daily logging
+                Three steps, then it runs by itself
               </h2>
               <p className="mt-2 text-sm sm:text-base text-[#929B90]">
-                Every step runs deterministically behind your normal Git workflow—even if optional AI summarization is paused.
+                Work the way you already do. BuildLog follows along in the background.
               </p>
             </div>
 
             <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-5">
               {[
                 {
-                  num: '01. Read-Only Ingestion',
-                  title: 'Signed Webhooks & History Import',
-                  desc: 'Authorize specific repositories with read-only permissions. BuildLog imports recent commits, PRs, and issues on connection, then verifies every incoming webhook with HMAC-SHA256 and delivery ID deduplication.',
-                  bullets: ['push, pull_request & issues events', 'Atomic X-GitHub-Delivery deduplication'],
+                  num: '01. Connect',
+                  title: 'Link your GitHub project',
+                  desc: 'Paste your project link and approve read-only access on GitHub. BuildLog copies your recent work straight away.',
+                  bullets: ['Takes about a minute', 'BuildLog can read, never change'],
                 },
                 {
-                  num: '02. Evidence Over Guesswork',
-                  title: 'Strict Fact vs. Inference Separation',
-                  desc: 'Related pushes and PR updates within 90 minutes form Inferred Activity Clusters. Verified commit SHAs, file paths, and open PRs are never mixed with AI suggestions or fabricated blocker claims.',
-                  bullets: ['Honest cluster timestamps (not fake hours)', 'Optional server-side Gemini summaries'],
+                  num: '02. Keep working',
+                  title: 'Changes are recorded for you',
+                  desc: 'Every time someone saves work, asks for a review or reports a problem on GitHub, BuildLog notes it down. Facts and AI guesses are always kept apart.',
+                  bullets: ['Updates arrive automatically', 'Optional AI summaries'],
                 },
                 {
-                  num: '03. Instant Resume Briefs',
-                  title: 'Ready-to-Paste Context Handoffs',
-                  desc: 'Open any repository to copy or export a clean Markdown Resume Project brief listing your objective, modified code areas, recent commits, open PRs, open issues, and suggested next checks.',
-                  bullets: ['One-click Markdown export (.md)', 'Full workspace JSON portability'],
+                  num: '03. Catch up instantly',
+                  title: 'Read or share the summary',
+                  desc: 'Open any project to see what changed, what is waiting and what to do next, in plain English. Copy it or download it in one click.',
+                  bullets: ['One-click copy or download', 'Export or delete your data anytime'],
                 },
               ].map((pillar) => (
                 <article
@@ -427,10 +422,10 @@ export function LandingPage() {
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
             <div className="max-w-2xl mb-10">
               <p className="text-xs font-mono uppercase tracking-[0.16em] text-[#B8F34A]">
-                Workspace Architecture
+                What you get
               </p>
               <h2 className="mt-2 text-2xl sm:text-3xl font-display font-bold tracking-tight text-[#FCFFEC]">
-                Structured project intelligence from real commits
+                A clear picture of every project, built from real work
               </h2>
             </div>
 
@@ -447,22 +442,22 @@ export function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-display font-semibold text-[#FCFFEC]">
-                    Living Project Memory &amp; Code Area Mapping
+                    A living project summary
                   </h3>
                   <p className="mt-2 text-sm text-[#929B90] leading-relaxed max-w-2xl">
-                    Aggregates changed file paths into top-level directory heatmaps, lists verified commit SHAs, tracks open pull requests/issues, and blends your optional Project Objective into a repeatable handoff document.
+                    See which parts of the project are changing, what's waiting for review and which problems are still open, together with your goal for the project, in one easy-to-share page.
                   </p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                  <div className="rounded-xl border border-[#252D24] bg-[#080908] p-3.5 text-xs font-mono space-y-1">
-                    <p className="text-[#929B90]">Modified Code Areas</p>
-                    <p className="text-[#B8F34A]">src/server (4 files)</p>
-                    <p className="text-[#F3F5EF]">src/utils (3 files)</p>
+                  <div className="rounded-xl border border-[#252D24] bg-[#080908] p-3.5 text-xs space-y-1">
+                    <p className="text-[#929B90]">Parts that changed</p>
+                    <p className="text-[#B8F34A]">Checkout (4 files)</p>
+                    <p className="text-[#F3F5EF]">Sign-in (3 files)</p>
                   </div>
-                  <div className="rounded-xl border border-[#252D24] bg-[#080908] p-3.5 text-xs font-mono space-y-1">
-                    <p className="text-[#929B90]">Open GitHub Radar</p>
-                    <p className="text-emerald-300">PR #42 · Raw signature check</p>
-                    <p className="text-amber-300">Issue #19 · Queue persistence</p>
+                  <div className="rounded-xl border border-[#252D24] bg-[#080908] p-3.5 text-xs space-y-1">
+                    <p className="text-[#929B90]">Still open</p>
+                    <p className="text-emerald-300">#42 · Password reset emails (review)</p>
+                    <p className="text-amber-300">#19 · Missing orders (problem)</p>
                   </div>
                 </div>
               </div>
@@ -474,18 +469,18 @@ export function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-display font-semibold text-[#FCFFEC]">
-                    Inferred Activity Clusters
+                    Work grouped into sessions
                   </h3>
                   <p className="mt-2 text-sm text-[#929B90] leading-relaxed">
-                    Groups burst pushes and PR updates occurring within 90 minutes on the same repository—explicitly labeled as inferred groupings rather than fabricated hours worked.
+                    Changes made close together are grouped into work sessions, so the timeline is easy to scan. Groupings are labelled as estimates, not hours worked.
                   </p>
                 </div>
-                <div className="rounded-xl border border-[#252D24] bg-[#080908] p-3.5 text-xs font-mono space-y-1">
+                <div className="rounded-xl border border-[#252D24] bg-[#080908] p-3.5 text-xs space-y-1">
                   <div className="flex items-center justify-between text-[#929B90]">
-                    <span>Push + PR cluster</span>
-                    <span>28m span</span>
+                    <span>Work session</span>
+                    <span>about 30 min</span>
                   </div>
-                  <p className="text-[#FCFFEC]">3 commits · feature/auth</p>
+                  <p className="text-[#FCFFEC]">3 changes · Sign-in</p>
                 </div>
               </div>
 
@@ -496,10 +491,10 @@ export function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-display font-semibold text-[#FCFFEC]">
-                    Resilient AI Summaries
+                    Optional AI summaries
                   </h3>
                   <p className="mt-2 text-sm text-[#929B90] leading-relaxed">
-                    Optional Gemini summarization distinguishes verified GitHub facts from inferred next steps. When unavailable, every raw commit, PR, and issue stays recorded safely.
+                    AI can write a short recap and suggest next steps, always marked apart from the facts. If AI is switched off, everything is still recorded.
                   </p>
                 </div>
               </div>
@@ -511,10 +506,10 @@ export function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-display font-semibold text-[#FCFFEC]">
-                    Push, PR &amp; Issue Coverage
+                    Changes, reviews &amp; problems
                   </h3>
                   <p className="mt-2 text-sm text-[#929B90] leading-relaxed">
-                    Imports initial history on installation connection and updates continuously via verified webhook deliveries with raw JSON metadata inspection.
+                    Copies your recent history when you connect, then keeps up with new changes, review requests and reported problems as they happen.
                   </p>
                 </div>
               </div>
@@ -526,10 +521,10 @@ export function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-display font-semibold text-[#FCFFEC]">
-                    Portable Export &amp; Purge
+                    Your data, your call
                   </h3>
                   <p className="mt-2 text-sm text-[#929B90] leading-relaxed">
-                    Export your entire workspace—installations, events, summaries, and memories—as portable JSON or Markdown, or purge all records in one click.
+                    Download everything BuildLog has saved for you, or delete it all, in one click.
                   </p>
                 </div>
               </div>
@@ -543,13 +538,13 @@ export function LandingPage() {
             <div className="rounded-2xl border border-[#252D24] bg-[#121512] p-6 sm:p-10">
               <div className="max-w-2xl">
                 <p className="text-xs font-mono uppercase tracking-[0.16em] text-[#B8F34A]">
-                  Privacy-First Defaults
+                  Privacy
                 </p>
                 <h2 className="mt-2 text-2xl sm:text-3xl font-display font-bold tracking-tight text-[#FCFFEC]">
                   We track the activity. You keep your source code.
                 </h2>
                 <p className="mt-3 text-sm sm:text-base text-[#929B90] leading-relaxed">
-                  BuildLog requests strictly read-only repository permissions and persists commit titles, branches, PR/issue metadata, and changed file paths by default—never full repository snapshots.
+                  BuildLog can only read your project, never change it. It saves short descriptions of the work (titles, dates and file names), not your actual code.
                 </p>
               </div>
 
@@ -557,23 +552,23 @@ export function LandingPage() {
                 {[
                   {
                     icon: ShieldCheck,
-                    title: 'Read-Only GitHub App',
-                    desc: 'Zero write access requested. Disconnect installations or pause any repo anytime.',
+                    title: 'Read-only access',
+                    desc: 'BuildLog can never change your project. Disconnect or pause anytime.',
                   },
                   {
                     icon: Lock,
-                    title: 'Per-User Data Isolation',
-                    desc: 'Firebase Authentication & Firestore security rules enforce strict ownerId isolation.',
+                    title: 'Only you can see your data',
+                    desc: 'Each account is kept separate. Other users can never see your projects.',
                   },
                   {
                     icon: GitCommit,
-                    title: 'Metadata-Only Default',
-                    desc: 'Diff context opt-in is disabled by default and controlled directly from Settings.',
+                    title: 'No code stored',
+                    desc: 'Only descriptions of the work are saved. You control this in Settings.',
                   },
                   {
                     icon: ArrowRight,
-                    title: 'HMAC-SHA256 Verified',
-                    desc: 'Raw webhook payload signature checks reject spoofed deliveries before parsing.',
+                    title: 'Verified updates',
+                    desc: 'Every update is checked to make sure it really came from GitHub.',
                   },
                 ].map((item) => {
                   const Icon = item.icon;
@@ -603,10 +598,10 @@ export function LandingPage() {
           />
           <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h2 className="text-2xl sm:text-4xl font-display font-bold tracking-tight text-[#FCFFEC]">
-              Never start from scratch again.
+              Never lose track of a project again.
             </h2>
             <p className="mt-3 text-sm sm:text-base text-[#929B90] max-w-xl mx-auto">
-              Create your BuildLog account, verify your read-only GitHub installation, and keep living project context on autopilot.
+              Create a free account, connect a project, and let BuildLog keep the summary up to date for you.
             </p>
             <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
               <Link
@@ -614,7 +609,7 @@ export function LandingPage() {
                 className={getButtonClasses('primary', 'lg')}
               >
                 <GitBranch className="w-4 h-4 shrink-0" aria-hidden="true" />
-                <span>{user ? 'Open Dashboard' : 'Create Free Workspace'}</span>
+                <span>{user ? 'Open BuildLog' : 'Create a free account'}</span>
               </Link>
               {!user && (
                 <Link to="/login" className={getButtonClasses('secondary', 'lg')}>
@@ -636,33 +631,33 @@ export function LandingPage() {
               <span>BuildLog</span>
             </div>
             <p className="leading-relaxed">
-              Your development history, on autopilot. Built for solo builders, students, and engineering teams.
+              Always know where your project stands. Built for solo makers, students and teams.
             </p>
           </div>
 
           <div className="space-y-2">
-            <p className="font-mono uppercase tracking-wider text-[11px] text-[#FCFFEC]">Workflow</p>
+            <p className="uppercase tracking-wider text-[11px] text-[#FCFFEC]">Product</p>
             <ul className="space-y-1.5">
-              <li><a href="#preview" className="hover:text-[#FCFFEC] transition-colors">Interactive Preview</a></li>
-              <li><a href="#architecture" className="hover:text-[#FCFFEC] transition-colors">Ingestion Pipeline</a></li>
-              <li><a href="#memory-bento" className="hover:text-[#FCFFEC] transition-colors">Project Memory</a></li>
+              <li><a href="#preview" className="hover:text-[#FCFFEC] transition-colors">See an example</a></li>
+              <li><a href="#architecture" className="hover:text-[#FCFFEC] transition-colors">How it works</a></li>
+              <li><a href="#memory-bento" className="hover:text-[#FCFFEC] transition-colors">Project summaries</a></li>
             </ul>
           </div>
 
           <div className="space-y-2">
-            <p className="font-mono uppercase tracking-wider text-[11px] text-[#FCFFEC]">Security</p>
+            <p className="uppercase tracking-wider text-[11px] text-[#FCFFEC]">Privacy</p>
             <ul className="space-y-1.5">
-              <li><a href="#privacy" className="hover:text-[#FCFFEC] transition-colors">Read-Only Permissions</a></li>
-              <li><a href="#privacy" className="hover:text-[#FCFFEC] transition-colors">Metadata-Only Defaults</a></li>
-              <li><a href="#privacy" className="hover:text-[#FCFFEC] transition-colors">JSON Data Portability</a></li>
+              <li><a href="#privacy" className="hover:text-[#FCFFEC] transition-colors">Read-only access</a></li>
+              <li><a href="#privacy" className="hover:text-[#FCFFEC] transition-colors">No code stored</a></li>
+              <li><a href="#privacy" className="hover:text-[#FCFFEC] transition-colors">Download your data</a></li>
             </ul>
           </div>
 
           <div className="space-y-2">
-            <p className="font-mono uppercase tracking-wider text-[11px] text-[#FCFFEC]">Account</p>
+            <p className="uppercase tracking-wider text-[11px] text-[#FCFFEC]">Account</p>
             <ul className="space-y-1.5">
-              <li><Link to="/login" className="hover:text-[#FCFFEC] transition-colors">Sign In</Link></li>
-              <li><Link to="/signup" className="hover:text-[#FCFFEC] transition-colors">Create Account</Link></li>
+              <li><Link to="/login" className="hover:text-[#FCFFEC] transition-colors">Sign in</Link></li>
+              <li><Link to="/signup" className="hover:text-[#FCFFEC] transition-colors">Create account</Link></li>
               <li><Link to="/reset-password" className="hover:text-[#FCFFEC] transition-colors">Reset Password</Link></li>
             </ul>
           </div>

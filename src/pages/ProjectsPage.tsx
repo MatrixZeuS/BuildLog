@@ -80,12 +80,14 @@ export function ProjectsPage() {
     try {
       const result = await syncRepositoryHistory(repo);
       showToast(
-        `Synced ${repo.fullName} (${result.insertedCount} new GitHub events imported).`,
+        result.insertedCount > 0
+          ? `Found ${result.insertedCount} new ${result.insertedCount === 1 ? 'update' : 'updates'} for ${repo.fullName}.`
+          : `${repo.fullName} is already up to date.`,
         'success'
       );
     } catch (error) {
       showToast(
-        parseFriendlyFirestoreError(error, `Could not sync ${repo.fullName}.`),
+        parseFriendlyFirestoreError(error, `Couldn't check ${repo.fullName} for updates. Please try again.`),
         'error'
       );
     }
@@ -93,13 +95,13 @@ export function ProjectsPage() {
 
   return (
     <AppShell
-      title="Connected Projects"
-      breadcrumbs={[{ label: 'Workspace' }, { label: 'Connected Projects' }]}
-      subtitle="Repositories tracked automatically through your read-only GitHub App installation."
+      title="Projects"
+      breadcrumbs={[{ label: 'Workspace' }, { label: 'Projects' }]}
+      subtitle="The GitHub projects BuildLog is keeping track of for you."
       actions={
         <Link to="/integrations" className={getButtonClasses('primary', 'sm')}>
           <Plug className="w-4 h-4 shrink-0" aria-hidden="true" />
-          <span>Connect Repository</span>
+          <span>Add a project</span>
         </Link>
       }
     >
@@ -115,9 +117,9 @@ export function ProjectsPage() {
       ) : repositories.length === 0 ? (
         <EmptyState
           icon={<GitBranch className="w-5 h-5" />}
-          title="No connected repositories yet"
-          description="Paste a GitHub repository URL on the Integrations page to authorize read-only access, import recent activity, and start automatic webhook tracking."
-          actionLabel="Connect Repository"
+          title="No projects yet"
+          description="Add a project by pasting its GitHub link. BuildLog will copy its recent work and keep track of new changes for you."
+          actionLabel="Add a project"
           onAction={() => navigate('/integrations')}
         />
       ) : (
@@ -125,35 +127,35 @@ export function ProjectsPage() {
           {/* Telemetry Summary Strip */}
           <section className="rounded-2xl border border-[#252D24] bg-[#121512] p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-mono text-[#B8F34A]">
-                {countsByStatus.active} Active{' '}
-                {countsByStatus.active === 1 ? 'Repository' : 'Repositories'}
+              <p className="text-xs text-[#B8F34A]">
+                {countsByStatus.active} active{' '}
+                {countsByStatus.active === 1 ? 'project' : 'projects'}
               </p>
               <p className="mt-1 text-sm text-[#929B90]">
-                Automated webhook ingestion and repository history synchronization across your connected codebases.
+                New changes on GitHub are added automatically.
               </p>
             </div>
 
             <div className="grid grid-cols-3 gap-6 shrink-0 border-t md:border-t-0 md:border-l border-[#252D24] pt-3 md:pt-0 md:pl-6">
               <div>
-                <p className="text-[11px] font-mono uppercase tracking-wider text-[#929B90]">
-                  Events
+                <p className="text-[11px] uppercase tracking-wider text-[#929B90]">
+                  Updates
                 </p>
                 <p className="mt-0.5 text-xl font-display font-bold tabular-nums text-[#FCFFEC]">
                   {activityEvents.length}
                 </p>
               </div>
               <div>
-                <p className="text-[11px] font-mono uppercase tracking-wider text-[#929B90]">
-                  Summaries
+                <p className="text-[11px] uppercase tracking-wider text-[#929B90]">
+                  Recaps
                 </p>
                 <p className="mt-0.5 text-xl font-display font-bold tabular-nums text-[#B8F34A]">
                   {activitySummaries.length}
                 </p>
               </div>
               <div>
-                <p className="text-[11px] font-mono uppercase tracking-wider text-[#929B90]">
-                  Tracked
+                <p className="text-[11px] uppercase tracking-wider text-[#929B90]">
+                  Projects
                 </p>
                 <p className="mt-0.5 text-xl font-display font-bold tabular-nums text-[#FCFFEC]">
                   {repositories.length}
@@ -174,8 +176,8 @@ export function ProjectsPage() {
                 type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Filter repositories by name or language..."
-                aria-label="Filter repositories"
+                placeholder="Find a project…"
+                aria-label="Find a project"
                 className="min-h-[40px] w-full rounded-lg border border-[#252D24] bg-[#121512] pl-10 pr-12 py-2 text-sm text-[#F3F5EF] placeholder:text-[#929B90]/60 focus:outline-none focus:border-[#B8F34A]"
               />
               <kbd className="hidden sm:inline-block absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[10px] text-[#929B90] bg-[#181B18] border border-[#252D24] rounded px-1.5 py-0.5 pointer-events-none">
@@ -243,8 +245,8 @@ export function ProjectsPage() {
           {filteredRepos.length === 0 ? (
             <EmptyState
               icon={<Search className="w-5 h-5" />}
-              title="No matching repositories"
-              description="Adjust your search query or status filter."
+              title="No matching projects"
+              description="Try a different search, or clear the filter."
             />
           ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -280,25 +282,25 @@ export function ProjectsPage() {
                       <p className="text-sm text-[#929B90] line-clamp-2 min-h-[2.5rem]">
                         {repo.objective ||
                           repo.description ||
-                          'No repository description recorded.'}
+                          'No description yet.'}
                       </p>
 
                       {/* Clean 3-column metrics */}
                       <div className="grid grid-cols-3 gap-2 rounded-xl border border-[#252D24] bg-[#080908] px-3 py-2.5">
                         <div>
-                          <p className="text-[10px] font-mono uppercase text-[#929B90]">Events</p>
+                          <p className="text-[10px] uppercase text-[#929B90]">Updates</p>
                           <p className="text-sm font-display font-bold tabular-nums text-[#FCFFEC]">
                             {eventCount}
                           </p>
                         </div>
                         <div>
-                          <p className="text-[10px] font-mono uppercase text-[#929B90]">Summaries</p>
+                          <p className="text-[10px] uppercase text-[#929B90]">Recaps</p>
                           <p className="text-sm font-display font-bold tabular-nums text-[#B8F34A]">
                             {summaryCount}
                           </p>
                         </div>
                         <div>
-                          <p className="text-[10px] font-mono uppercase text-[#929B90]">Last Sync</p>
+                          <p className="text-[10px] uppercase text-[#929B90]">Updated</p>
                           <p className="text-xs font-mono tabular-nums text-[#F3F5EF] truncate mt-0.5">
                             {repo.lastSyncedAt
                               ? formatRelativeDate(repo.lastSyncedAt)
@@ -318,14 +320,14 @@ export function ProjectsPage() {
                           icon={<RefreshCw className="w-3.5 h-3.5" />}
                           onClick={() => void handleSync(repo.id)}
                         >
-                          Sync
+                          Check for updates
                         </Button>
                         <Link
                           to={`/projects/${repo.id}/memory`}
                           className={getButtonClasses('primary', 'sm')}
                         >
                           <FileCode2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                          <span>Memory</span>
+                          <span>Summary</span>
                         </Link>
                       </div>
 
@@ -379,12 +381,12 @@ export function ProjectsPage() {
                         </Link>
                         <RepositoryStatusLabel status={repo.status} />
                       </div>
-                      <p className="text-xs font-mono text-[#929B90] tabular-nums">
-                        {repo.primaryLanguage || 'Repo'} · {repo.defaultBranch} · {eventCount}{' '}
-                        events · {summaryCount} summaries ·{' '}
+                      <p className="text-xs text-[#929B90] tabular-nums">
+                        {eventCount} {eventCount === 1 ? 'update' : 'updates'} · {summaryCount}{' '}
+                        {summaryCount === 1 ? 'recap' : 'recaps'} ·{' '}
                         {repo.lastSyncedAt
-                          ? `Synced ${formatRelativeDate(repo.lastSyncedAt)}`
-                          : 'Never synced'}
+                          ? `Updated ${formatRelativeDate(repo.lastSyncedAt)}`
+                          : 'Not updated yet'}
                       </p>
                     </div>
 
@@ -397,14 +399,14 @@ export function ProjectsPage() {
                         icon={<RefreshCw className="w-3.5 h-3.5" />}
                         onClick={() => void handleSync(repo.id)}
                       >
-                        Sync
+                        Check for updates
                       </Button>
                       <Link
                         to={`/projects/${repo.id}/memory`}
                         className={getButtonClasses('primary', 'sm')}
                       >
                         <FileCode2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                        <span>Memory</span>
+                        <span>Summary</span>
                       </Link>
                       {repo.htmlUrl && (
                         <a
@@ -432,17 +434,17 @@ export function ProjectsPage() {
               </div>
               <div>
                 <h2 className="text-sm font-display font-semibold text-[#FCFFEC]">
-                  Connect another repository
+                  Add another project
                 </h2>
                 <p className="mt-0.5 text-xs text-[#929B90]">
-                  Add repositories from your GitHub App installation to import recent history and track live webhooks automatically.
+                  Paste another GitHub link and BuildLog will start tracking it too.
                 </p>
               </div>
             </div>
 
             <Link to="/integrations" className={getButtonClasses('secondary', 'sm')}>
               <GitBranch className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-              <span>Manage Integrations</span>
+              <span>Add a project</span>
             </Link>
           </section>
         </div>
