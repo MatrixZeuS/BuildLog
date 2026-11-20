@@ -46,7 +46,7 @@ function loadSigningKey(pem: string): crypto.KeyObject {
     return crypto.createPrivateKey(pem);
   } catch {
     throw new Error(
-      'GITHUB_APP_PRIVATE_KEY in Netlify is not a valid private key. Open the .pem file downloaded from your GitHub App, copy everything including the -----BEGIN and -----END lines, paste it as the value (Live app), and redeploy.'
+      'GITHUB_APP_PRIVATE_KEY is not a valid private key. Open the .pem file downloaded from your GitHub App, copy everything including the -----BEGIN and -----END lines, paste it as the value in your Vercel project settings, and redeploy.'
     );
   }
 }

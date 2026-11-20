@@ -1,7 +1,9 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { getDeployStore, getStore, type Store } from '@netlify/blobs';
+import { Timestamp } from 'firebase-admin/firestore';
+import { getServerFirestore } from './firebaseAdmin';
+import { createFirestoreStateStoreAdapter, type StateCollection } from './firestoreStateStore';
 import type {
   NormalizedGitHubEventPayload,
   RepositoryStatus,
@@ -123,7 +125,7 @@ export interface BlobStoreAdapter {
   listAll(prefix: string): Promise<BlobListEntry[]>;
 }
 
-export type StorageEnvironmentMode = 'netlify-production' | 'netlify-deploy-preview' | 'local-file';
+export type StorageEnvironmentMode = 'firestore-production' | 'firestore-preview' | 'local-file';
 
 export interface StorageEnvironmentResolution {
   mode: StorageEnvironmentMode;
@@ -131,8 +133,8 @@ export interface StorageEnvironmentResolution {
   isDeployScoped: boolean;
 }
 
-export const PRODUCTION_BLOB_STORE_NAME = 'buildlog-state-prod';
-export const PREVIEW_BLOB_STORE_NAME = 'buildlog-state-preview';
+export const PRODUCTION_STATE_COLLECTION = 'buildlog_server_state';
+export const PREVIEW_STATE_COLLECTION = 'buildlog_server_state_preview';
 export const DEFAULT_WEBHOOK_LEASE_MS = 45_000;
 const AUTH_STATE_TTL_MS = 30 * 60 * 1000;
 const MAX_DELIVERIES_PER_INSTALLATION = 40;
@@ -140,12 +142,9 @@ const MAX_DELIVERIES_PER_INSTALLATION = 40;
 export function resolveStorageEnvironment(
   env: Record<string, string | undefined> = process.env
 ): StorageEnvironmentResolution {
-  const hasGlobalBlobsContext =
-    env === process.env &&
-    Boolean((globalThis as { netlifyBlobsContext?: unknown }).netlifyBlobsContext);
-  const hasNetlifyRuntime =
-    env.NETLIFY === 'true' || Boolean(env.NETLIFY_BLOBS_CONTEXT) || hasGlobalBlobsContext;
-  if (!hasNetlifyRuntime) {
+  const useFirestore =
+    Boolean(env.VERCEL) || (env.BUILDLOG_STORAGE ?? '').toLowerCase() === 'firestore';
+  if (!useFirestore) {
     return {
       mode: 'local-file',
       storeName: 'local-file',
@@ -153,19 +152,23 @@ export function resolveStorageEnvironment(
     };
   }
 
-  if (env.CONTEXT === 'production') {
+  const isProduction =
+    env.VERCEL_ENV === 'production' ||
+    (!env.VERCEL_ENV && (env.BUILDLOG_CONTEXT ?? '').toLowerCase() === 'production');
+
+  if (isProduction) {
     return {
-      mode: 'netlify-production',
-      storeName: PRODUCTION_BLOB_STORE_NAME,
+      mode: 'firestore-production',
+      storeName: PRODUCTION_STATE_COLLECTION,
       isDeployScoped: false,
     };
   }
 
-  // All non-production contexts (deploy-preview, branch-deploy, dev, etc.) are strictly
-  // deploy-scoped so preview deployments can never read, overwrite, or delete production data.
+  // Preview and development deployments use a separate collection so they can never read,
+  // overwrite, or delete production data.
   return {
-    mode: 'netlify-deploy-preview',
-    storeName: PREVIEW_BLOB_STORE_NAME,
+    mode: 'firestore-preview',
+    storeName: PREVIEW_STATE_COLLECTION,
     isDeployScoped: true,
   };
 }
@@ -253,51 +256,6 @@ function keyPendingPrefix(ownerId: string): string {
 
 function keyPendingEvent(ownerId: string, queueId: string): string {
   return `${keyPendingPrefix(ownerId)}${safeSegment(queueId)}`;
-}
-
-export function createNetlifyBlobStoreAdapter(store: Store): BlobStoreAdapter {
-  return {
-    async getWithMetadata<T = unknown>(key: string): Promise<BlobEntryWithMetadata<T> | null> {
-      const result = await store.getWithMetadata(key, {
-        type: 'json',
-        consistency: 'strong',
-      });
-      if (!result) return null;
-      return {
-        data: result.data as T,
-        etag: result.etag,
-      };
-    },
-    async setJSON(
-      key: string,
-      data: unknown,
-      options?: { onlyIfNew?: boolean } | { onlyIfMatch?: string }
-    ): Promise<BlobWriteResult> {
-      const writeOptions =
-        options && 'onlyIfNew' in options && options.onlyIfNew
-          ? { onlyIfNew: true }
-          : options && 'onlyIfMatch' in options && options.onlyIfMatch
-            ? { onlyIfMatch: options.onlyIfMatch }
-            : undefined;
-      const result = await store.setJSON(key, data, writeOptions);
-      return {
-        etag: result.etag,
-        modified: result.modified,
-      };
-    },
-    async delete(key: string): Promise<void> {
-      await store.delete(key);
-    },
-    async listAll(prefix: string): Promise<BlobListEntry[]> {
-      const entries: BlobListEntry[] = [];
-      for await (const page of store.list({ prefix, paginate: true })) {
-        for (const item of page.blobs) {
-          entries.push({ key: item.key, etag: item.etag });
-        }
-      }
-      return entries;
-    },
-  };
 }
 
 interface LocalPersistedFile {
@@ -415,6 +373,7 @@ export function createLocalFileBlobStoreAdapter(
 
 let activeCustomAdapter: BlobStoreAdapter | null = null;
 let cachedDefaultLocalAdapter: BlobStoreAdapter | null = null;
+const cachedFirestoreAdapters = new Map<string, BlobStoreAdapter>();
 
 export function setWebhookStoreAdapterForTesting(adapter: BlobStoreAdapter | null): void {
   activeCustomAdapter = adapter;
@@ -428,20 +387,18 @@ export function getActiveBlobStore(
   }
 
   const resolved = resolveStorageEnvironment(env);
-  if (resolved.mode === 'netlify-production') {
-    const store = getStore({
-      name: resolved.storeName,
-      consistency: 'strong',
-    });
-    return createNetlifyBlobStoreAdapter(store);
-  }
-
-  if (resolved.mode === 'netlify-deploy-preview') {
-    const store = getDeployStore({
-      name: resolved.storeName,
-      consistency: 'strong',
-    });
-    return createNetlifyBlobStoreAdapter(store);
+  if (resolved.mode === 'firestore-production' || resolved.mode === 'firestore-preview') {
+    const cached = cachedFirestoreAdapters.get(resolved.storeName);
+    if (cached) return cached;
+    const collection = getServerFirestore().collection(
+      resolved.storeName
+    ) as unknown as StateCollection;
+    const adapter = createFirestoreStateStoreAdapter(
+      collection,
+      (seconds, nanoseconds) => new Timestamp(seconds, nanoseconds)
+    );
+    cachedFirestoreAdapters.set(resolved.storeName, adapter);
+    return adapter;
   }
 
   if (!cachedDefaultLocalAdapter) {

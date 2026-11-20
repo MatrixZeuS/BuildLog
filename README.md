@@ -2,7 +2,7 @@
 
 **Your development history, on autopilot.** BuildLog connects to your GitHub repositories, records pushes, pull requests and issues as they happen, summarises the activity with Gemini, and keeps a per-repository **Project Memory**: what the project is, what changed recently, open work, technical decisions and suggested next steps.
 
-Live: https://buildlog-manage.netlify.app
+Live: https://buildlog-manage.vercel.app
 
 ---
 
@@ -20,16 +20,16 @@ Live: https://buildlog-manage.netlify.app
 | Layer | Tech |
 |---|---|
 | Frontend | React 19, Vite 8, Tailwind CSS 4, React Router 7, Motion |
-| Backend | Express (TypeScript), run as a Netlify Function |
+| Backend | Express (TypeScript), run as a Vercel Function |
 | Auth & data | Firebase Authentication (email/password, Google), Cloud Firestore |
-| Server state | Netlify Blobs (webhook queue, delivery leases, GitHub sessions) – local JSON file in development |
+| Server state | Firestore via `firebase-admin` (webhook queue, delivery leases, GitHub sessions) – local JSON file in development |
 | AI | Google Gemini via `@google/genai` |
-| Hosting | Netlify |
+| Hosting | Vercel |
 
 ## How it works
 
 ```
-GitHub ──webhook──▶ /api/webhooks/github ──verify HMAC──▶ lease + queue (Netlify Blobs)
+GitHub ──webhook──▶ /api/webhooks/github ──verify HMAC──▶ lease + queue (Firestore)
                                                                │
 Browser (signed in) ◀── poll /api/ingestion/pending ◀─────────┘
    │  writes events to Firestore, acks queue
@@ -47,10 +47,9 @@ Browser (signed in) ◀── poll /api/ingestion/pending ◀──────�
 
 ```
 ├── server.ts                    # Local dev/production server (Express + Vite middleware)
-├── netlify.toml                 # Netlify build & function config
-├── netlify/
-│   ├── functions/api.mjs        # Netlify Function entry (routes /api/*)
-│   └── server/handler.ts        # Request ↔ Express adapter (bundled at build time)
+├── vercel.json                  # Vercel install/build commands
+├── deploy/vercel/function.ts    # Vercel Function entry for /api/* (bundled at build time)
+├── scripts/build-vercel.mjs     # Writes .vercel/output (static site + API function + routes)
 ├── firestore.rules              # Firestore security rules (deploy manually – see below)
 ├── security_spec.md             # Security invariants the rules enforce
 ├── firebase-applet-config.json  # Firebase web config (public by design)
@@ -94,7 +93,7 @@ Replace the values in `firebase-applet-config.json` with your Firebase web app c
 
 | Variable | Required | Description |
 |---|---|---|
-| `APP_URL` | Yes | Public URL of the app, e.g. `https://buildlog-manage.netlify.app` (no trailing slash) |
+| `APP_URL` | Yes | Public URL of the app, e.g. `https://buildlog-manage.vercel.app` (no trailing slash) |
 | `GITHUB_APP_ID` | Yes | Numeric GitHub App ID |
 | `GITHUB_APP_SLUG` | Yes | App slug from `github.com/apps/<slug>` |
 | `GITHUB_APP_CLIENT_ID` | Yes | GitHub App Client ID |
@@ -102,8 +101,8 @@ Replace the values in `firebase-applet-config.json` with your Firebase web app c
 | `GITHUB_APP_PRIVATE_KEY` | Yes (secret) | Full contents of the App's `.pem` private key (multi-line, `\n`-escaped or base64 are all accepted) |
 | `GITHUB_WEBHOOK_SECRET` | Yes (secret) | Webhook secret configured on the GitHub App |
 | `GEMINI_API_KEY` | No (secret) | Enables AI summaries |
-| `FIREBASE_PROJECT_ID` | Netlify | Firebase project ID used to verify ID tokens server-side |
-| `BUILDLOG_CONTEXT` | Netlify | Set to `production` on the production deploy context |
+| `FIREBASE_SERVICE_ACCOUNT` | Vercel (secret) | Full contents of a Firebase service account key `.json` (raw or base64). Lets the server store its data in Firestore |
+| `FIRESTORE_DATABASE_ID` | No | Override the Firestore database (defaults to `firestoreDatabaseId` in `firebase-applet-config.json`) |
 
 Never commit real secrets. `.env*` files (except `.env.example`) are git-ignored.
 
@@ -124,29 +123,40 @@ Create an app at **GitHub → Settings → Developer settings → GitHub Apps �
 
 Then copy the App ID, slug, Client ID, a new client secret and a generated private key into your environment variables.
 
-## Deploying to Netlify
+## Deploying to Vercel
 
-1. **Import the repo** in Netlify (*Add new site → Import an existing project → GitHub*). Build settings come from `netlify.toml`:
-   - Build command: `npm run build && npm run build:functions`
-   - Publish directory: `dist`
-   - Functions: `netlify/functions`
-2. **Add environment variables** (see table above) under *Site configuration → Environment variables*. Put production values in the **Live app** context.
-3. **Trigger a deploy.** New environment variables only take effect after a redeploy.
-4. **Firebase:** add your Netlify domain to *Authentication → Settings → Authorized domains*.
-5. **Verify:** `https://<your-site>/api/health` should report `configured: true` with no missing variables.
+1. **Import the repo** in Vercel (*Add New… → Project → Import* the GitHub repo). Build settings come from `vercel.json`, so leave the framework preset and output settings as they are:
+   - Install command: `npm install` (`.npmrc` enables legacy peer deps)
+   - Build command: `npm run build:vercel`
+2. **Create a Firebase service account key** for server-side storage: Firebase console → ⚙️ *Project settings → Service accounts → Generate new private key*. This downloads a `.json` file.
+3. **Add environment variables** (see table above) under *Project → Settings → Environment Variables*, including `FIREBASE_SERVICE_ACCOUNT` (paste the whole `.json` file contents). Tick at least **Production**.
+4. **Redeploy.** New environment variables only take effect after a new deployment (*Deployments → ⋯ → Redeploy*).
+5. **Firebase:** add your Vercel domain (e.g. `buildlog-manage.vercel.app`) to *Authentication → Settings → Authorized domains*.
+6. **GitHub App:** point the Homepage, Callback, Setup and Webhook URLs at your Vercel domain (see [GitHub App setup](#github-app-setup)).
+7. **Verify:** `https://<your-domain>/api/health` should report `configured: true` with no missing variables.
 
-### Why the function is pre-bundled
+### How the Vercel build works
 
-`npm run build:functions` uses esbuild to bundle `netlify/server/handler.ts` and all its dependencies into `netlify/.build/server.mjs`, which `netlify/functions/api.mjs` re-exports. This is required because:
+`npm run build:vercel` runs `vite build`, then `scripts/build-vercel.mjs`, which writes a [Build Output API](https://vercel.com/docs/build-output-api) directory:
 
-- Netlify Blobs strong-consistency reads (used for webhook leases and auth state) only work in **v2** functions, and
-- v2 functions are shipped with raw `node_modules`, where ESM-only dependencies (e.g. `jose`, via `firebase-admin`) fail to load on Netlify's Node 18 function runtime.
+| Path | Contents |
+|---|---|
+| `.vercel/output/static/` | The frontend (`dist/`) |
+| `.vercel/output/functions/api.func/` | The Express API from `deploy/vercel/function.ts`, bundled with esbuild into a single file (Node.js 22, Vercel request helpers off so webhook signatures are checked on the raw body) |
+| `.vercel/output/config.json` | Routing: `/api/*` → the API function, everything else → `index.html` |
 
-`SECRETS_SCAN_OMIT_KEYS` in `netlify.toml` lists environment variables whose values are public identifiers (e.g. the Firebase project ID) so Netlify's secrets scanner doesn't flag them; real secrets are still scanned.
+### Server-side storage
+
+The server keeps a little state of its own: GitHub sign-in sessions, one-time sign-in links, the queue of incoming GitHub updates and webhook delivery locks. On Vercel this lives in **Firestore**, in server-only collections that the client can't read (blocked by `firestore.rules`):
+
+- `buildlog_server_state` for production deployments
+- `buildlog_server_state_preview` for preview deployments, so previews can never touch production data
+
+Writes that must not race (delivery locks, one-time links) use Firestore's atomic *create* and *update-if-unchanged* operations. In local development the same data is kept in `.data/server-state.json`. Set `BUILDLOG_STORAGE=firestore` to use Firestore elsewhere.
 
 ## Firestore security rules
 
-Rules live in `firestore.rules` and are **not deployed by Netlify**. After changing them, publish them in the Firebase console (*Firestore → select the app's database → Rules → Publish*) or with the Firebase CLI. The rules enforce:
+Rules live in `firestore.rules` and are **not deployed by Vercel**. After changing them, publish them in the Firebase console (*Firestore → select the app's database → Rules → Publish*) or with the Firebase CLI. The rules enforce:
 
 - authentication on every read/write, with strict per-user ownership (`ownerId == request.auth.uid`)
 - immutable ownership fields, allow-listed fields and bounded sizes
@@ -162,7 +172,7 @@ See `security_spec.md` for the full list of invariants.
 |---|---|
 | `npm run dev` | Start the Express + Vite dev server on port 3000 |
 | `npm run build` | Build the frontend into `dist/` |
-| `npm run build:functions` | Bundle the Netlify API function into `netlify/.build/` |
+| `npm run build:vercel` | Build the frontend and the Vercel output (`.vercel/output/`) |
 | `npm start` | Run the production server locally (after `npm run build`) |
 | `npm run lint` | Type-check with `tsc --noEmit` |
 
@@ -177,10 +187,10 @@ npx tsx --test src/utils/logic.test.ts src/server/app.test.ts src/server/webhook
 ## Known limitations
 
 - Ingestion of queued webhook events into Firestore happens in the browser, so a BuildLog tab must be open.
-- Netlify synchronous functions time out after 10 seconds; very large summaries may not complete (raw activity is still saved).
+- The API function is limited to 30 seconds per request (`maxDuration`); very large summaries may not complete (raw activity is still saved).
 - The Gemini rate limit is kept in memory per function instance.
-- GitHub user access tokens are stored in Netlify Blobs without additional encryption.
+- GitHub user access tokens are stored in the server-only Firestore collection without additional encryption.
 
 ## Contributing
 
-Work happens on a feature branch and is merged into `main` through pull requests; Netlify deploys `main` automatically.
+Work happens on a feature branch and is merged into `main` through pull requests; Vercel deploys `main` automatically.
