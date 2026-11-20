@@ -96,7 +96,7 @@ export function RepositoryDetailPage() {
   if (!loading && !repository) {
     return (
       <AppShell
-        title="Repository not found"
+        title="Project not found"
         breadcrumbs={[
           { label: 'Projects', to: '/projects' },
           { label: 'Not found' },
@@ -104,9 +104,9 @@ export function RepositoryDetailPage() {
       >
         <EmptyState
           icon={<GitBranch className="w-5 h-5" />}
-          title="Repository unavailable"
-          description="This repository may have been disconnected or removed from your workspace."
-          actionLabel="Back to Projects"
+          title="We can't find this project"
+          description="It may have been disconnected or removed."
+          actionLabel="Back to projects"
           onAction={() => navigate('/projects')}
         />
       </AppShell>
@@ -126,9 +126,9 @@ export function RepositoryDetailPage() {
     try {
       await updateRepositoryObjective(repository.id, objective);
       await refreshProjectMemory({ ...repository, objective: objective.trim() });
-      showToast('Project objective updated and memory refreshed.', 'success');
+      showToast('Goal saved. Your project summary has been updated.', 'success');
     } catch (error) {
-      showToast(parseFriendlyFirestoreError(error, 'Failed to save objective.'), 'error');
+      showToast(parseFriendlyFirestoreError(error, "Couldn't save the goal. Please try again."), 'error');
     } finally {
       setSavingObjective(false);
     }
@@ -142,12 +142,12 @@ export function RepositoryDetailPage() {
       await updateRepositoryStatus(repository.id, nextStatus);
       showToast(
         nextStatus === 'paused'
-          ? `Paused automatic tracking for ${repository.fullName}.`
-          : `Resumed automatic tracking for ${repository.fullName}.`,
+          ? `Paused. BuildLog won't record new changes for ${repository.fullName} until you resume.`
+          : `Resumed. New changes for ${repository.fullName} will be recorded again.`,
         'info'
       );
     } catch (error) {
-      showToast(parseFriendlyFirestoreError(error, 'Could not update status.'), 'error');
+      showToast(parseFriendlyFirestoreError(error, "Couldn't change this setting. Please try again."), 'error');
     } finally {
       setUpdatingStatus(false);
     }
@@ -158,11 +158,13 @@ export function RepositoryDetailPage() {
     try {
       const result = await syncRepositoryHistory(repository);
       showToast(
-        `Imported ${result.insertedCount} new GitHub events for ${repository.fullName}.`,
+        result.insertedCount > 0
+          ? `Found ${result.insertedCount} new ${result.insertedCount === 1 ? 'update' : 'updates'}.`
+          : 'Already up to date.',
         'success'
       );
     } catch (error) {
-      showToast(parseFriendlyFirestoreError(error, 'Repository sync failed.'), 'error');
+      showToast(parseFriendlyFirestoreError(error, "Couldn't check for updates. Please try again."), 'error');
     }
   };
 
@@ -171,12 +173,12 @@ export function RepositoryDetailPage() {
     try {
       const res = await summarizeRepositoryPendingEvents(repository);
       if (res.status === 'ready') {
-        showToast(`Generated summary across ${res.summarizedCount} events.`, 'success');
+        showToast(`Created a recap of ${res.summarizedCount} ${res.summarizedCount === 1 ? 'update' : 'updates'}.`, 'success');
       } else {
-        showToast(res.message || 'Summarization skipped; raw events preserved.', 'info');
+        showToast(res.message || "AI recaps aren't available right now. Your updates are still saved.", 'info');
       }
     } catch (error) {
-      showToast(parseFriendlyFirestoreError(error, 'Summarization failed.'), 'error');
+      showToast(parseFriendlyFirestoreError(error, "Couldn't create a recap. Please try again."), 'error');
     }
   };
 
@@ -189,11 +191,11 @@ export function RepositoryDetailPage() {
 
   return (
     <AppShell
-      title={repository?.fullName ?? 'Loading repository...'}
-      subtitle={repository?.description || 'Automated GitHub repository activity and summaries.'}
+      title={repository?.fullName ?? 'Loading…'}
+      subtitle={repository?.description || 'Recent work on this project.'}
       breadcrumbs={[
         { label: 'Projects', to: '/projects' },
-        { label: repository?.fullName ?? 'Repository' },
+        { label: repository?.fullName ?? 'Project' },
       ]}
       actions={
         repository && (
@@ -206,7 +208,7 @@ export function RepositoryDetailPage() {
               icon={<RefreshCw className="w-3.5 h-3.5" />}
               onClick={() => void handleSync()}
             >
-              Sync History
+              Check for updates
             </Button>
             <Button
               variant="secondary"
@@ -216,14 +218,14 @@ export function RepositoryDetailPage() {
               icon={<Sparkles className="w-3.5 h-3.5" />}
               onClick={() => void handleSummarize()}
             >
-              Summarize ({pendingCount})
+              Create AI recap{pendingCount > 0 ? ` (${pendingCount})` : ''}
             </Button>
             <Link
               to={`/projects/${repository.id}/memory`}
               className={getButtonClasses('primary', 'sm')}
             >
               <FileCode2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-              <span>Resume Context</span>
+              <span>Project summary</span>
             </Link>
           </>
         )
@@ -247,7 +249,7 @@ export function RepositoryDetailPage() {
           <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="rounded-2xl border border-[#252D24] bg-[#121512] p-4">
               <div className="flex items-center justify-between text-xs text-[#929B90]">
-                <span>Ingested Events</span>
+                <span>Updates</span>
                 <GitCommit className="w-4 h-4 text-[#B8F34A]" aria-hidden="true" />
               </div>
               <p className="mt-2 text-2xl font-display font-bold tabular-nums text-[#FCFFEC]">
@@ -257,7 +259,7 @@ export function RepositoryDetailPage() {
 
             <div className="rounded-2xl border border-[#252D24] bg-[#121512] p-4">
               <div className="flex items-center justify-between text-xs text-[#929B90]">
-                <span>Open PRs</span>
+                <span>Waiting for review</span>
                 <GitPullRequest className="w-4 h-4 text-emerald-300" aria-hidden="true" />
               </div>
               <p className="mt-2 text-2xl font-display font-bold tabular-nums text-[#FCFFEC]">
@@ -267,7 +269,7 @@ export function RepositoryDetailPage() {
 
             <div className="rounded-2xl border border-[#252D24] bg-[#121512] p-4">
               <div className="flex items-center justify-between text-xs text-[#929B90]">
-                <span>Open Issues</span>
+                <span>Open problems</span>
                 <AlertCircle className="w-4 h-4 text-amber-300" aria-hidden="true" />
               </div>
               <p className="mt-2 text-2xl font-display font-bold tabular-nums text-[#FCFFEC]">
@@ -277,7 +279,7 @@ export function RepositoryDetailPage() {
 
             <div className="rounded-2xl border border-[#252D24] bg-[#121512] p-4">
               <div className="flex items-center justify-between text-xs text-[#929B90]">
-                <span>Modified Areas</span>
+                <span>Parts changed</span>
                 <FolderGit2 className="w-4 h-4 text-[#B8F34A]" aria-hidden="true" />
               </div>
               <p className="mt-2 text-2xl font-display font-bold tabular-nums text-[#B8F34A]">
@@ -291,30 +293,26 @@ export function RepositoryDetailPage() {
             <div className="lg:col-span-5 rounded-2xl border border-[#252D24] bg-[#121512] p-5 space-y-4">
               <div className="flex items-center justify-between gap-2">
                 <h2 className="text-base font-display font-semibold text-[#FCFFEC]">
-                  Repository Tracking
+                  Tracking
                 </h2>
                 <RepositoryStatusLabel status={repository.status} />
               </div>
 
               <dl className="divide-y divide-[#252D24] text-sm">
                 <div className="py-2.5 flex items-center justify-between gap-4">
-                  <dt className="text-[#929B90]">Default Branch</dt>
-                  <dd className="font-mono text-xs text-[#FCFFEC]">{repository.defaultBranch}</dd>
-                </div>
-                <div className="py-2.5 flex items-center justify-between gap-4">
-                  <dt className="text-[#929B90]">Primary Language</dt>
+                  <dt className="text-[#929B90]">Main language</dt>
                   <dd className="text-[#FCFFEC]">{repository.primaryLanguage || '—'}</dd>
                 </div>
                 <div className="py-2.5 flex items-center justify-between gap-4">
-                  <dt className="text-[#929B90]">Last Synced</dt>
+                  <dt className="text-[#929B90]">Last updated</dt>
                   <dd className="tabular-nums text-[#FCFFEC]">
-                    {repository.lastSyncedAt ? formatShortDate(repository.lastSyncedAt) : 'Not synced yet'}
+                    {repository.lastSyncedAt ? formatShortDate(repository.lastSyncedAt) : 'Not yet'}
                   </dd>
                 </div>
                 <div className="py-2.5 flex items-center justify-between gap-4">
-                  <dt className="text-[#929B90]">AI Summaries</dt>
-                  <dd className="font-mono tabular-nums text-xs text-[#B8F34A]">
-                    {repoSummaries.length} generated
+                  <dt className="text-[#929B90]">AI recaps</dt>
+                  <dd className="tabular-nums text-xs text-[#B8F34A]">
+                    {repoSummaries.length}
                   </dd>
                 </div>
               </dl>
@@ -334,7 +332,7 @@ export function RepositoryDetailPage() {
                     }
                     onClick={() => void handleTogglePause()}
                   >
-                    {repository.status === 'active' ? 'Pause Tracking' : 'Resume Tracking'}
+                    {repository.status === 'active' ? 'Pause tracking' : 'Resume tracking'}
                   </Button>
                 )}
                 {repository.htmlUrl && (
@@ -358,19 +356,19 @@ export function RepositoryDetailPage() {
             >
               <div>
                 <h2 className="text-base font-display font-semibold text-[#FCFFEC]">
-                  Project Objective (Optional Context)
+                  Project goal (optional)
                 </h2>
                 <p className="mt-1 text-xs text-[#929B90]">
-                  Supply a concise goal so automated Resume Project briefs combine your intent with verified GitHub activity.
+                  In a sentence, what is this project trying to achieve? It's shown at the top of your project summary.
                 </p>
                 <div className="mt-4">
                   <Textarea
-                    label="Current Objective"
+                    label="Goal"
                     rows={3}
                     maxLength={SCHEMA_LIMITS.REPO_OBJECTIVE_MAX}
                     value={objective}
                     onChange={(e) => setObjective(e.target.value)}
-                    placeholder="e.g., Harden GitHub webhook signature verification and ship read-only ingestion MVP."
+                    placeholder="e.g. Launch the online shop so customers can order from their phones."
                     error={objectiveError}
                   />
                 </div>
@@ -383,7 +381,7 @@ export function RepositoryDetailPage() {
                   loading={savingObjective}
                   icon={<Save className="w-3.5 h-3.5" />}
                 >
-                  Save Objective
+                  Save goal
                 </Button>
               </div>
             </form>
@@ -393,10 +391,10 @@ export function RepositoryDetailPage() {
           <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-6 rounded-2xl border border-[#252D24] bg-[#121512] p-5 space-y-3">
               <h2 className="text-base font-display font-semibold text-[#FCFFEC]">
-                Modified Code Areas
+                Parts of the project that changed
               </h2>
               <p className="text-xs text-[#929B90]">
-                Directories touched most frequently across recent ingested commits and PRs.
+                The folders where most recent work happened.
               </p>
               {synthesized.modifiedCodeAreas.length > 0 ? (
                 <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 text-xs font-mono">
@@ -411,20 +409,20 @@ export function RepositoryDetailPage() {
                 </ul>
               ) : (
                 <p className="text-sm text-[#929B90] pt-1">
-                  No changed file path metadata recorded yet.
+                  Nothing yet.
                 </p>
               )}
             </div>
 
             <div className="lg:col-span-6 rounded-2xl border border-[#252D24] bg-[#121512] p-5 space-y-4">
               <h2 className="text-base font-display font-semibold text-[#FCFFEC]">
-                Open Pull Requests &amp; Issues
+                Still open
               </h2>
 
               <div className="space-y-3 text-xs">
                 <div>
-                  <p className="font-mono text-emerald-300 mb-1.5">
-                    Open Pull Requests ({synthesized.openPullRequests.length})
+                  <p className="text-emerald-300 mb-1.5">
+                    Waiting for review: pull requests ({synthesized.openPullRequests.length})
                   </p>
                   {synthesized.openPullRequests.length > 0 ? (
                     <ul className="space-y-1 text-[#F3F5EF]">
@@ -433,13 +431,13 @@ export function RepositoryDetailPage() {
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-[#929B90]">None open from ingested events.</p>
+                    <p className="text-[#929B90]">None right now.</p>
                   )}
                 </div>
 
                 <div className="pt-3 border-t border-[#252D24]">
-                  <p className="font-mono text-amber-300 mb-1.5">
-                    Open Issues ({synthesized.openIssues.length})
+                  <p className="text-amber-300 mb-1.5">
+                    Open problems: issues ({synthesized.openIssues.length})
                   </p>
                   {synthesized.openIssues.length > 0 ? (
                     <ul className="space-y-1 text-[#F3F5EF]">
@@ -448,7 +446,7 @@ export function RepositoryDetailPage() {
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-[#929B90]">None open from ingested events.</p>
+                    <p className="text-[#929B90]">None right now.</p>
                   )}
                 </div>
               </div>
@@ -459,16 +457,16 @@ export function RepositoryDetailPage() {
           <section className="rounded-2xl border border-[#252D24] bg-[#121512] p-5 space-y-4">
             <div>
               <h2 className="text-base font-display font-semibold text-[#FCFFEC]">
-                Automated Activity Summaries
+                AI recaps
               </h2>
               <p className="mt-0.5 text-xs text-[#929B90]">
-                Verified GitHub evidence is kept strictly separate from metadata inferences and AI-suggested next checks.
+                Short recaps of recent work. Facts from GitHub are always shown separately from guesses and suggestions.
               </p>
             </div>
 
             {repoSummaries.length === 0 ? (
               <div className="rounded-xl border border-[#252D24] bg-[#080908] p-4 text-xs text-[#929B90]">
-                No summaries generated yet. Raw events are preserved below—click &ldquo;Summarize&rdquo; when pending events exist.
+                No recaps yet. Your updates are saved below. Click &ldquo;Create AI recap&rdquo; to make one.
               </div>
             ) : (
               <div className="space-y-4">
@@ -478,18 +476,18 @@ export function RepositoryDetailPage() {
                     className="rounded-xl border border-[#252D24] bg-[#080908] p-4 space-y-3"
                   >
                     <div className="flex items-center justify-between gap-2 text-xs text-[#929B90]">
-                      <span className="font-mono tabular-nums">
-                        {sum.relatedEventIds.length}{' '}
-                        {sum.relatedEventIds.length === 1 ? 'event' : 'events'} summarized
+                      <span className="tabular-nums">
+                        Covers {sum.relatedEventIds.length}{' '}
+                        {sum.relatedEventIds.length === 1 ? 'update' : 'updates'}
                       </span>
-                      <span className="tabular-nums font-mono">{formatShortDate(sum.generatedAt)}</span>
+                      <span className="tabular-nums">{formatShortDate(sum.generatedAt)}</span>
                     </div>
 
                     <p className="text-sm text-[#FCFFEC] leading-relaxed">{sum.summary}</p>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 border-t border-[#252D24] text-xs">
                       <div>
-                        <p className="font-mono text-[#B8F34A] mb-1.5">Verified GitHub Facts</p>
+                        <p className="text-[#B8F34A] mb-1.5">Facts from GitHub</p>
                         {sum.evidence.length > 0 ? (
                           <ul className="space-y-1 text-[#F3F5EF]/90 list-disc list-inside">
                             {sum.evidence.map((ev, i) => (
@@ -502,7 +500,7 @@ export function RepositoryDetailPage() {
                       </div>
 
                       <div>
-                        <p className="font-mono text-amber-300 mb-1.5">Metadata Inferences</p>
+                        <p className="text-amber-300 mb-1.5">Our best guesses</p>
                         {sum.inferences.length > 0 ? (
                           <ul className="space-y-1 text-[#929B90] list-disc list-inside">
                             {sum.inferences.map((inf, i) => (
@@ -510,12 +508,12 @@ export function RepositoryDetailPage() {
                             ))}
                           </ul>
                         ) : (
-                          <p className="text-[#929B90]">No inferences recorded.</p>
+                          <p className="text-[#929B90]">None.</p>
                         )}
                       </div>
 
                       <div>
-                        <p className="font-mono text-[#FCFFEC] mb-1.5">AI-Suggested Next Steps</p>
+                        <p className="text-[#FCFFEC] mb-1.5">Suggested next steps</p>
                         {sum.suggestedNextSteps.length > 0 ? (
                           <ul className="space-y-1 text-[#929B90] list-disc list-inside">
                             {sum.suggestedNextSteps.map((step, i) => (
@@ -536,12 +534,12 @@ export function RepositoryDetailPage() {
           {/* Raw Ingested GitHub Activity Events */}
           <section className="rounded-2xl border border-[#252D24] bg-[#121512] p-5 space-y-4">
             <h2 className="text-base font-display font-semibold text-[#FCFFEC]">
-              Ingested GitHub Events
+              All updates
             </h2>
 
             {repoEvents.length === 0 ? (
               <p className="text-sm text-[#929B90]">
-                No commits, pull requests, or issues ingested yet. Click &ldquo;Sync History&rdquo; above or push a commit to GitHub.
+                No updates yet. Click &ldquo;Check for updates&rdquo; above, or make a change on GitHub.
               </p>
             ) : (
               <ul className="divide-y divide-[#252D24]">
@@ -550,10 +548,6 @@ export function RepositoryDetailPage() {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <EventTypeLabel eventType={ev.eventType} />
-                        <span className="text-xs font-mono text-[#929B90] tabular-nums">
-                          {ev.branch}
-                          {ev.commitSha ? ` · ${ev.commitSha.slice(0, 7)}` : ''}
-                        </span>
                         {ev.author && (
                           <span className="text-xs text-[#929B90]">by {ev.author}</span>
                         )}
@@ -561,7 +555,7 @@ export function RepositoryDetailPage() {
 
                       <div className="flex items-center gap-3 shrink-0">
                         <ProcessingStatusLabel status={ev.processingStatus} />
-                        <span className="text-xs font-mono text-[#929B90] tabular-nums">
+                        <span className="text-xs text-[#929B90] tabular-nums">
                           {formatRelativeDate(ev.occurredAt)}
                         </span>
                         {ev.sourceUrl && (
@@ -581,11 +575,10 @@ export function RepositoryDetailPage() {
                     <p className="text-sm font-medium text-[#FCFFEC]">{ev.title}</p>
 
                     {ev.changedFiles.length > 0 && (
-                      <p className="text-xs font-mono text-[#929B90] break-all">
-                        Files ({ev.changedFiles.length}):{' '}
-                        {ev.changedFiles.slice(0, 6).join(', ')}
-                        {ev.changedFiles.length > 6
-                          ? ` +${ev.changedFiles.length - 6} more`
+                      <p className="text-xs text-[#929B90] break-all">
+                        Files changed: {ev.changedFiles.slice(0, 5).join(', ')}
+                        {ev.changedFiles.length > 5
+                          ? ` and ${ev.changedFiles.length - 5} more`
                           : ''}
                       </p>
                     )}

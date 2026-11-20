@@ -40,16 +40,13 @@ export function clusterActivityEvents(
       ).slice(0, 30);
 
       const repoName = repoNameMap.get(repositoryId) ?? 'Connected repository';
-      const primaryBranch = branches[0] ?? 'default';
 
       clusters.push({
         clusterId: `${repositoryId}-${startAt.getTime()}`,
         repositoryId,
         repositoryName: repoName,
         isInferred: true,
-        label: `Inferred activity cluster on ${primaryBranch} (${group.length} ${
-          group.length === 1 ? 'event' : 'events'
-        })`,
+        label: `Work session · ${group.length} ${group.length === 1 ? 'update' : 'updates'}`,
         startAt,
         endAt,
         eventCount: group.length,

@@ -78,52 +78,52 @@ export function computeWebhookHealthStatus({
   if (!githubStatus) {
     if (connectedInstallations.length === 0) {
       level = 'setup_required';
-      headline = 'Not Connected';
+      headline = 'No projects yet';
       description =
-        'Connect a GitHub repository to import recent activity and start automatic webhook tracking.';
+        'Connect a GitHub project and BuildLog will start tracking the work on it automatically.';
     } else if (erroredInstallations.length > 0 || failedOrUnmappedCount > 0) {
       level = 'degraded';
-      headline = 'Attention Needed';
+      headline = 'Needs attention';
       description =
-        'Some recent webhook deliveries need review. Check Advanced Diagnostics on Integrations.';
+        "Some recent updates from GitHub couldn't be processed. See Technical details on the Connections page.";
     } else if (latestWebhookAt) {
       level = 'healthy';
-      headline = 'Healthy · Live Webhooks';
+      headline = 'Working';
       description =
-        'Verified webhook deliveries are flowing into your workspace and updating project memory.';
+        'Changes from GitHub are arriving and your project summaries are up to date.';
     } else {
       level = 'awaiting_events';
-      headline = 'Ready · Awaiting Events';
+      headline = 'Connected';
       description =
-        'Repositories are connected. Push a commit, open a PR, or create an issue to confirm live webhook delivery.';
+        'Your projects are connected. New changes will show up here as soon as they happen on GitHub.';
     }
   } else if (!serverReady || connectedInstallations.length === 0) {
     level = 'setup_required';
-    headline = serverReady ? 'Ready to Connect' : 'Server Setup Required';
+    headline = serverReady ? 'Ready to connect' : 'Setup not finished';
     if (!serverReady) {
       description =
-        'GitHub integration requires server configuration by your workspace host. Expand Advanced Diagnostics on Integrations for details.';
+        "GitHub connections aren't set up on this BuildLog yet. Ask whoever runs it to finish setup (see Technical details).";
     } else {
       description =
-        'Connect a GitHub repository URL to authorize access and begin automatic webhook tracking.';
+        'Paste a GitHub project link to start tracking its work automatically.';
     }
   } else if (erroredInstallations.length > 0 || failedOrUnmappedCount > 0) {
     level = 'degraded';
-    headline = 'Attention Needed';
+    headline = 'Needs attention';
     description =
       failedOrUnmappedCount > 0
-        ? `${failedOrUnmappedCount} recent webhook ${failedOrUnmappedCount === 1 ? 'delivery requires' : 'deliveries require'} attention. Open Advanced Diagnostics for details.`
-        : 'One or more connected GitHub accounts reported an authorization issue.';
+        ? `${failedOrUnmappedCount} recent ${failedOrUnmappedCount === 1 ? "update from GitHub couldn't" : "updates from GitHub couldn't"} be processed. See Technical details on the Connections page.`
+        : 'A linked GitHub account needs to be reconnected.';
   } else if (latestWebhookAt) {
     level = 'healthy';
-    headline = 'Healthy · Live Webhooks';
+    headline = 'Working';
     description =
-      'Automatic webhook tracking is active and real-time GitHub events have been received.';
+      'Changes from GitHub are arriving automatically.';
   } else {
     level = 'awaiting_events';
-    headline = 'Ready · Awaiting Events';
+    headline = 'Connected';
     description =
-      'Webhook tracking is armed for your connected repositories. Waiting for your first push, pull request, or issue event.';
+      'Your projects are connected. New changes will show up here as soon as they happen on GitHub.';
   }
 
   return {

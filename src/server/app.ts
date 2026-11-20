@@ -422,7 +422,7 @@ export function createApp(): express.Express {
       if (!config.configured || !config.oauthConfigured || !config.webhookConfigured) {
         res.status(503).json({
           error:
-            'GitHub repository connection is not configured on this server yet. Expand Advanced Diagnostics for details.',
+            "GitHub repository connection is not configured on this server yet, so projects can't be added. Ask whoever runs this BuildLog to finish setup (see Technical details on this page).",
           missingEnvVars: config.missingEnvVars,
         });
         return;
@@ -491,7 +491,7 @@ export function createApp(): express.Express {
       if (!pending) {
         res.status(400).json({
           error:
-            'GitHub authorization session expired or did not match your account. Paste the repository URL and try again.',
+            'That took too long, or you signed in with a different account. Paste the project link and try again.',
         });
         return;
       }
@@ -505,7 +505,7 @@ export function createApp(): express.Express {
       const config = getGitHubAppConfigStatus();
       if (!config.configured || !config.oauthConfigured) {
         res.status(503).json({
-          error: 'GitHub App authorization credentials are not configured on this server.',
+          error: "GitHub connections aren't set up on this BuildLog yet. Ask whoever runs it to finish setup.",
           missingEnvVars: config.missingEnvVars,
         });
         return;
@@ -563,7 +563,7 @@ export function createApp(): express.Express {
         if (targetInstallationId) {
           if (!verifiedUser.installationIds.includes(targetInstallationId)) {
             res.status(403).json({
-              error: `That GitHub installation does not belong to your authorized GitHub account (@${verifiedUser.githubLogin}).`,
+              error: `You're signed in to GitHub as @${verifiedUser.githubLogin}, but that access belongs to a different account. Sign in to GitHub with the right account and try again.`,
             });
             return;
           }
@@ -575,7 +575,7 @@ export function createApp(): express.Express {
 
           if (!check.found) {
             res.status(403).json({
-              error: `Authorized as @${verifiedUser.githubLogin} on ${check.accountName}, but "${pending.targetFullName}" was not granted access. Click Continue with GitHub and select that repository.`,
+              error: `BuildLog wasn't given access to "${pending.targetFullName}". Click Try again, then on GitHub make sure this project is selected.`,
             });
             return;
           }
@@ -610,7 +610,7 @@ export function createApp(): express.Express {
         }
 
         res.status(403).json({
-          error: `@${verifiedUser.githubLogin} does not have BuildLog installed with access to "${pending.targetFullName}". Click Continue with GitHub and select that repository.`,
+          error: `BuildLog doesn't have access to "${pending.targetFullName}" yet. Click Try again, then on GitHub choose this project.`,
         });
       } catch (error) {
         res.status(502).json({
@@ -644,7 +644,7 @@ export function createApp(): express.Express {
         const ownsInstallation = await userOwnsInstallationOnServer(uid, installationId);
         if (!ownsInstallation) {
           res.status(403).json({
-            error: 'You are not authorized to register webhooks for this GitHub installation.',
+            error: "You don't have permission to set up live updates for this GitHub account.",
           });
           return;
         }
@@ -686,7 +686,7 @@ export function createApp(): express.Express {
       const ownsInstallation = await userOwnsInstallationOnServer(uid, installationId);
       if (!ownsInstallation) {
         res.status(403).json({
-          error: 'You are not authorized to import activity from this GitHub installation.',
+          error: "You don't have permission to copy activity from this GitHub account.",
         });
         return;
       }
@@ -694,7 +694,7 @@ export function createApp(): express.Express {
       const config = getGitHubAppConfigStatus();
       if (!config.configured) {
         res.status(503).json({
-          error: 'GitHub App credentials are missing on the server.',
+          error: "GitHub connections aren't set up on this BuildLog yet. Ask whoever runs it to finish setup.",
         });
         return;
       }

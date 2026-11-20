@@ -49,14 +49,14 @@ const PROCESSING_META: Record<
   ProcessingStatus,
   { label: string; colorClass: string; Icon: React.ComponentType<{ className?: string }> }
 > = {
-  pending: { label: 'Pending summary', colorClass: 'text-amber-300', Icon: Clock },
+  pending: { label: 'Not summarized yet', colorClass: 'text-amber-300', Icon: Clock },
   summarized: { label: 'Summarized', colorClass: 'text-[#B8F34A]', Icon: CheckCircle2 },
   recorded_without_summary: {
-    label: 'Recorded (raw)',
+    label: 'Saved',
     colorClass: 'text-[#929B90]',
     Icon: CheckCircle2,
   },
-  failed: { label: 'Summary failed', colorClass: 'text-red-300', Icon: AlertCircle },
+  failed: { label: "Couldn't summarize", colorClass: 'text-red-300', Icon: AlertCircle },
 };
 
 export function ProcessingStatusLabel({
@@ -81,7 +81,7 @@ const INTEGRATION_META: Record<
   { label: string; colorClass: string; Icon: React.ComponentType<{ className?: string }> }
 > = {
   connected: { label: 'Connected', colorClass: 'text-[#B8F34A]', Icon: Link2 },
-  pending: { label: 'Pending', colorClass: 'text-amber-300', Icon: Clock },
+  pending: { label: 'Setting up', colorClass: 'text-amber-300', Icon: Clock },
   disconnected: { label: 'Disconnected', colorClass: 'text-[#929B90]', Icon: Unplug },
   error: { label: 'Attention needed', colorClass: 'text-red-300', Icon: AlertCircle },
 };
@@ -107,8 +107,8 @@ const EVENT_TYPE_META: Record<
   GitHubEventType,
   { label: string; colorClass: string; Icon: React.ComponentType<{ className?: string }> }
 > = {
-  push: { label: 'Push', colorClass: 'text-[#B8F34A]', Icon: GitCommit },
-  pull_request: { label: 'Pull Request', colorClass: 'text-emerald-300', Icon: GitPullRequest },
+  push: { label: 'Changes', colorClass: 'text-[#B8F34A]', Icon: GitCommit },
+  pull_request: { label: 'Review (PR)', colorClass: 'text-emerald-300', Icon: GitPullRequest },
   issues: { label: 'Issue', colorClass: 'text-amber-300', Icon: CircleDot },
 };
 

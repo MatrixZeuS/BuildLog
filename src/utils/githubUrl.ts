@@ -17,7 +17,7 @@ const REPO_PATTERN = /^[a-zA-Z0-9._-]{1,100}$/;
 export function parseGitHubRepositoryUrl(rawInput: string): ParsedGitHubRepoResult {
   const trimmed = rawInput.trim();
   if (!trimmed) {
-    return { valid: false, error: 'Paste a GitHub repository URL to connect.' };
+    return { valid: false, error: 'Paste the link to your project on GitHub.' };
   }
 
   // Handle git@github.com:owner/repo.git
@@ -39,7 +39,7 @@ export function parseGitHubRepositoryUrl(rawInput: string): ParsedGitHubRepoResu
   } catch {
     return {
       valid: false,
-      error: 'Enter a valid GitHub repository URL (for example, https://github.com/owner/repo).',
+      error: "That doesn't look like a GitHub project link. It should look like https://github.com/your-name/your-project.",
     };
   }
 
@@ -47,7 +47,7 @@ export function parseGitHubRepositoryUrl(rawInput: string): ParsedGitHubRepoResu
   if (host !== 'github.com' && host !== 'www.github.com') {
     return {
       valid: false,
-      error: 'Only github.com repository URLs are supported.',
+      error: 'Only links to github.com projects are supported.',
     };
   }
 
@@ -55,7 +55,7 @@ export function parseGitHubRepositoryUrl(rawInput: string): ParsedGitHubRepoResu
   if (segments.length < 2) {
     return {
       valid: false,
-      error: 'Include both the GitHub owner and repository name (e.g., https://github.com/owner/repo).',
+      error: 'The link needs both the owner and the project name, like https://github.com/your-name/your-project.',
     };
   }
 
@@ -68,14 +68,14 @@ function validateOwnerAndRepo(owner: string, repo: string): ParsedGitHubRepoResu
   if (!OWNER_PATTERN.test(owner)) {
     return {
       valid: false,
-      error: 'GitHub owner name in the URL is invalid.',
+      error: "The owner name in that link doesn't look right.",
     };
   }
 
   if (!REPO_PATTERN.test(repo) || repo === '.' || repo === '..') {
     return {
       valid: false,
-      error: 'GitHub repository name in the URL is invalid.',
+      error: "The project name in that link doesn't look right.",
     };
   }
 

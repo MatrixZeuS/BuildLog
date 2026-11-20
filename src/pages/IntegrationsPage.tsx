@@ -12,7 +12,6 @@ import {
   Loader2,
   Lock,
   Plug,
-  RefreshCw,
   ShieldCheck,
   Sparkles,
   Unplug,
@@ -70,10 +69,10 @@ interface ConnectionFlowState {
 }
 
 const STEP_ORDER: Array<{ key: string; label: string }> = [
-  { key: 'url', label: 'Validate URL' },
-  { key: 'auth', label: 'GitHub Auth' },
-  { key: 'import', label: 'Import History' },
-  { key: 'webhook', label: 'Webhook Active' },
+  { key: 'url', label: 'Check link' },
+  { key: 'auth', label: 'Allow access' },
+  { key: 'import', label: 'Copy recent work' },
+  { key: 'webhook', label: 'Live updates on' },
 ];
 
 function getCompletedStepIndex(phase: ConnectionPhase): number {
@@ -99,8 +98,6 @@ export function IntegrationsPage() {
     repositories,
     recentDeliveries,
     githubStatus,
-    checkingWebhookHealth,
-    refreshGitHubStatusAndHealth,
     refreshProjectMemory,
   } = useWorkspace();
   const { showToast } = useToast();
@@ -285,7 +282,7 @@ export function IntegrationsPage() {
       setFlow({
         phase: 'error',
         targetFullName: '',
-        errorMessage: `GitHub authorization was canceled or declined (${oauthErrorParam}).`,
+        errorMessage: `Access wasn't granted on GitHub, so BuildLog can't read this project yet. Click Try again and approve access on GitHub.`,
       });
       return;
     }
@@ -312,14 +309,14 @@ export function IntegrationsPage() {
             targetFullName: result.fullName,
             authorizeUrl: result.authorizeUrl,
             authorizeReason:
-              'Confirm your GitHub account permissions so BuildLog can verify repository ownership.',
+              'One more step: confirm on GitHub that this is your account, so BuildLog knows the project belongs to you.',
           });
           return;
         }
 
         if (result.status !== 'authorized' || !result.repository?.fullName) {
           throw new Error(
-            'Unexpected response from the BuildLog server while verifying GitHub authorization.'
+            "Something went wrong while checking access with GitHub. Please try again in a moment."
           );
         }
 
@@ -335,7 +332,7 @@ export function IntegrationsPage() {
           errorMessage:
             error instanceof Error
               ? error.message
-              : 'Unable to verify GitHub repository authorization.',
+              : "We couldn't confirm access with GitHub. Please try again.",
         });
       }
     })();
@@ -363,14 +360,14 @@ export function IntegrationsPage() {
           phase: 'authorization_required',
           targetFullName: response.fullName,
           authorizeUrl: response.authorizeUrl,
-          authorizeReason: `Select your GitHub account or organization and grant read-only access to ${response.fullName}.`,
+          authorizeReason: `GitHub will ask you to pick your account and choose ${response.fullName}. BuildLog can only read your project; it can never change it.`,
         });
         return;
       }
 
       if (response.status !== 'authorized' || !response.repository?.fullName) {
         throw new Error(
-          'Unexpected response from the BuildLog server while checking repository access. Ensure the backend server is up to date.'
+          "Something went wrong while checking this project. Please try again in a moment."
         );
       }
 
@@ -386,7 +383,7 @@ export function IntegrationsPage() {
         errorMessage:
           error instanceof Error
             ? parseFriendlyFirestoreError(error, error.message)
-            : 'Unable to connect repository.',
+            : "We couldn't connect this project. Please try again.",
       });
     }
   };
@@ -401,22 +398,15 @@ export function IntegrationsPage() {
       await disconnectIntegrationAndRepos(disconnectTarget.id, linkedRepos);
       await disconnectInstallationOnServer(disconnectTarget.installationId).catch(() => {});
       showToast(
-        `Disconnected GitHub account ${disconnectTarget.accountName}.`,
+        `Disconnected ${disconnectTarget.accountName}. BuildLog will stop receiving updates from it.`,
         'info'
       );
       setDisconnectTarget(null);
     } catch (error) {
-      showToast(parseFriendlyFirestoreError(error, 'Failed to disconnect.'), 'error');
+      showToast(parseFriendlyFirestoreError(error, "Couldn't disconnect. Please try again."), 'error');
     } finally {
       setDisconnecting(false);
     }
-  };
-
-  const handleOpenDiagnostics = () => {
-    setDiagnosticsOpen(true);
-    window.setTimeout(() => {
-      diagnosticsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 50);
   };
 
   const activeStepIndex = getCompletedStepIndex(flow.phase);
@@ -424,20 +414,9 @@ export function IntegrationsPage() {
 
   return (
     <AppShell
-      title="Connect GitHub Repository"
-      breadcrumbs={[{ label: 'Workspace' }, { label: 'Integrations' }]}
-      subtitle="Paste a GitHub repository URL to verify access, import recent history, and enable automatic webhook tracking."
-      actions={
-        <Button
-          variant="secondary"
-          size="sm"
-          loading={checkingWebhookHealth}
-          icon={<RefreshCw className="w-3.5 h-3.5" />}
-          onClick={() => void refreshGitHubStatusAndHealth()}
-        >
-          Refresh Health
-        </Button>
-      }
+      title="Connect a Project"
+      breadcrumbs={[{ label: 'Workspace' }, { label: 'Connections' }]}
+      subtitle="Link a GitHub project and BuildLog will keep track of the work on it for you."
     >
       <div className="space-y-6 max-w-5xl">
         {/* Primary Customer Action: Connect Repository via URL */}
@@ -447,10 +426,10 @@ export function IntegrationsPage() {
         >
           <div className="space-y-1">
             <h2 className="text-base sm:text-lg font-display font-semibold text-[#FCFFEC]">
-              Connect a Repository
+              Add a project from GitHub
             </h2>
             <p className="text-xs sm:text-sm text-[#929B90]">
-              Enter any GitHub repository URL you own or have permission to install apps on. BuildLog automatically verifies authorization, imports recent activity, and configures webhooks.
+              Paste the link to your project on GitHub. We'll ask GitHub for permission to read it (never to change it), copy your recent work, and keep it up to date from then on.
             </p>
           </div>
 
@@ -461,14 +440,14 @@ export function IntegrationsPage() {
           >
             <div className="flex-1">
               <Input
-                label="GitHub Repository URL"
+                label="Project link"
                 type="url"
                 value={repositoryUrl}
                 onChange={(e) => {
                   setRepositoryUrl(e.target.value);
                   if (urlError) setUrlError(undefined);
                 }}
-                placeholder="https://github.com/owner/repository"
+                placeholder="e.g. https://github.com/your-name/your-project"
                 error={urlError}
                 disabled={flow.phase === 'checking' || flow.phase === 'verifying' || flow.phase === 'importing'}
               />
@@ -481,7 +460,7 @@ export function IntegrationsPage() {
               disabled={flow.phase === 'verifying' || flow.phase === 'importing'}
               icon={<Plug className="w-4 h-4" />}
             >
-              Connect Repository
+              Connect
             </Button>
           </form>
 
@@ -501,7 +480,7 @@ export function IntegrationsPage() {
                   return (
                     <li
                       key={step.key}
-                      className={`rounded-lg border px-3 py-2 flex items-center gap-2 text-xs font-mono ${
+                      className={`rounded-lg border px-3 py-2 flex items-center gap-2 text-xs ${
                         isDone
                           ? 'border-[#B8F34A]/40 bg-[#B8F34A]/10 text-[#B8F34A]'
                           : isCurrent
@@ -529,12 +508,12 @@ export function IntegrationsPage() {
                 <div className="rounded-xl border border-[#B8F34A]/35 bg-[#121512] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="space-y-1 min-w-0">
                     <p className="text-sm font-display font-semibold text-[#FCFFEC]">
-                      GitHub authorization required for{' '}
-                      <span className="font-mono text-[#B8F34A]">{flow.targetFullName}</span>
+                      Allow BuildLog to read{' '}
+                      <span className="text-[#B8F34A]">{flow.targetFullName}</span>
                     </p>
                     <p className="text-xs text-[#929B90] leading-relaxed">
                       {flow.authorizeReason ||
-                        'Choose your personal account or organization and select this repository on GitHub. You will return here automatically.'}
+                        'Choose your account on GitHub and select this project. You will come back here automatically.'}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -552,7 +531,7 @@ export function IntegrationsPage() {
                       className={getButtonClasses('primary', 'md')}
                     >
                       <ExternalLink className="w-4 h-4 shrink-0" aria-hidden="true" />
-                      <span>Continue with GitHub</span>
+                      <span>Continue to GitHub</span>
                     </a>
                   </div>
                 </div>
@@ -568,13 +547,13 @@ export function IntegrationsPage() {
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-[#FCFFEC]">
                       {flow.phase === 'verifying'
-                        ? 'Verifying GitHub authorization and repository access...'
-                        : `Importing historical commits, pull requests & issues for ${flow.targetFullName}...`}
+                        ? 'Checking access with GitHub…'
+                        : `Copying recent work from ${flow.targetFullName}…`}
                     </p>
                     <p className="text-xs text-[#929B90]">
                       {flow.phase === 'verifying'
-                        ? 'Confirming repository permissions with GitHub.'
-                        : 'Registering repository memory and activating live webhook tracking.'}
+                        ? 'This usually takes a few seconds.'
+                        : 'Saving your recent changes and turning on live updates. This can take up to a minute.'}
                     </p>
                   </div>
                 </div>
@@ -590,11 +569,11 @@ export function IntegrationsPage() {
                     />
                     <div className="space-y-1 min-w-0">
                       <p className="text-sm font-display font-semibold text-[#FCFFEC]">
-                        {flow.targetFullName} is connected and live
+                        {flow.targetFullName} is connected
                       </p>
                       <p className="text-xs text-[#929B90] tabular-nums">
-                        Imported {flow.importedCount ?? 0} recent{' '}
-                        {flow.importedCount === 1 ? 'event' : 'events'} · Automatic webhook tracking enabled
+                        Copied {flow.importedCount ?? 0} recent{' '}
+                        {flow.importedCount === 1 ? 'update' : 'updates'}. New changes will appear automatically.
                       </p>
                     </div>
                   </div>
@@ -604,11 +583,11 @@ export function IntegrationsPage() {
                         to={`/projects/${flow.connectedRepoId}`}
                         className={getButtonClasses('secondary', 'sm')}
                       >
-                        <span>Inspect Repository</span>
+                        <span>Open project</span>
                       </Link>
                     )}
                     <Link to="/dashboard" className={getButtonClasses('primary', 'sm')}>
-                      <span>View on Dashboard</span>
+                      <span>Go to dashboard</span>
                       <ArrowRight className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                     </Link>
                   </div>
@@ -625,7 +604,7 @@ export function IntegrationsPage() {
                     <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" aria-hidden="true" />
                     <div className="space-y-0.5 min-w-0">
                       <p className="text-sm font-semibold text-red-200">
-                        Could not complete GitHub connection
+                        We couldn't connect this project
                       </p>
                       <p className="text-xs text-red-200/85 leading-relaxed">
                         {flow.errorMessage}
@@ -637,7 +616,7 @@ export function IntegrationsPage() {
                     size="sm"
                     onClick={() => setFlow({ phase: 'idle', targetFullName: '' })}
                   >
-                    Try Again
+                    Try again
                   </Button>
                 </div>
               )}
@@ -645,23 +624,20 @@ export function IntegrationsPage() {
           )}
         </section>
 
-        {/* Real-Time Webhook Connectivity & Last Synced Health Summary */}
-        <WebhookHealthCard variant="integrations" onOpenDiagnostics={handleOpenDiagnostics} />
-
         {/* Connected Repositories & Accounts */}
         <section className="rounded-2xl border border-[#252D24] bg-[#121512] p-5 sm:p-6 space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-display font-semibold text-[#FCFFEC]">
-                Connected Repositories
+                Your projects
               </h2>
               <p className="mt-0.5 text-xs text-[#929B90]">
-                Repositories actively receiving automatic push, pull request, and issue updates.
+                These projects update automatically whenever work happens on GitHub.
               </p>
             </div>
             {repositories.length > 0 && (
               <Link to="/dashboard" className={getButtonClasses('ghost', 'sm')}>
-                <span>Open Dashboard</span>
+                <span>Dashboard</span>
                 <ArrowRight className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
               </Link>
             )}
@@ -669,7 +645,7 @@ export function IntegrationsPage() {
 
           {repositories.length === 0 ? (
             <p className="text-sm text-[#929B90]">
-              No repositories connected yet. Paste a GitHub repository URL above to connect your first project.
+              No projects yet. Paste a GitHub link above to add your first one.
             </p>
           ) : (
             <ul className="divide-y divide-[#252D24]">
@@ -689,9 +665,9 @@ export function IntegrationsPage() {
                       </Link>
                       <RepositoryStatusLabel status={repo.status} />
                     </div>
-                    <p className="text-xs font-mono text-[#929B90] tabular-nums">
-                      {repo.primaryLanguage || 'Repository'} · {repo.defaultBranch} · Last synced{' '}
-                      {repo.lastSyncedAt ? formatRelativeDate(repo.lastSyncedAt) : 'never'}
+                    <p className="text-xs text-[#929B90] tabular-nums">
+                      {repo.primaryLanguage ? `${repo.primaryLanguage} · ` : ''}Updated{' '}
+                      {repo.lastSyncedAt ? formatRelativeDate(repo.lastSyncedAt) : 'not yet'}
                     </p>
                   </div>
 
@@ -700,7 +676,7 @@ export function IntegrationsPage() {
                       to={`/projects/${repo.id}/memory`}
                       className={getButtonClasses('secondary', 'sm')}
                     >
-                      Project Memory
+                      Project summary
                     </Link>
                   </div>
                 </li>
@@ -710,8 +686,8 @@ export function IntegrationsPage() {
 
           {integrations.length > 0 && (
             <div className="pt-4 border-t border-[#252D24] space-y-3">
-              <h3 className="text-xs font-mono uppercase tracking-wider text-[#929B90]">
-                Authorized GitHub Accounts
+              <h3 className="text-xs uppercase tracking-wider text-[#929B90]">
+                Linked GitHub accounts
               </h3>
               <ul className="divide-y divide-[#252D24]">
                 {integrations.map((inst) => {
@@ -728,8 +704,8 @@ export function IntegrationsPage() {
                           {inst.accountName}
                         </span>
                         <IntegrationStatusLabel status={inst.status} />
-                        <span className="text-xs font-mono text-[#929B90] tabular-nums">
-                          · {linkedCount} active {linkedCount === 1 ? 'repo' : 'repos'} · Connected{' '}
+                        <span className="text-xs text-[#929B90] tabular-nums">
+                          · {linkedCount} {linkedCount === 1 ? 'project' : 'projects'} · Linked{' '}
                           {formatShortDate(inst.connectedAt)}
                         </span>
                       </div>
@@ -752,7 +728,7 @@ export function IntegrationsPage() {
           )}
         </section>
 
-        {/* Expandable Advanced Diagnostics (Collapsed by Default) */}
+        {/* Technical details (collapsed by default) */}
         <section
           ref={diagnosticsSectionRef}
           id="advanced-diagnostics"
@@ -768,10 +744,10 @@ export function IntegrationsPage() {
               <ShieldCheck className="w-4 h-4 text-[#B8F34A] shrink-0" aria-hidden="true" />
               <div className="min-w-0">
                 <span className="text-sm font-display font-semibold text-[#FCFFEC] block">
-                  Advanced Diagnostics
+                  Technical details
                 </span>
                 <span className="text-xs text-[#929B90] block truncate">
-                  Server capability status, read-only permissions, and recent webhook delivery logs
+                  For troubleshooting. You don't need this to use BuildLog.
                 </span>
               </div>
             </div>
@@ -784,7 +760,9 @@ export function IntegrationsPage() {
           </button>
 
           {diagnosticsOpen && (
-            <div className="px-5 sm:px-6 pb-6 pt-2 border-t border-[#252D24] space-y-5">
+            <div className="px-5 sm:px-6 pb-6 pt-5 border-t border-[#252D24] space-y-5">
+              <WebhookHealthCard variant="integrations" />
+
               {/* Server Capability Checks */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div className="rounded-xl border border-[#252D24] bg-[#080908] p-3.5 space-y-1">
@@ -888,7 +866,7 @@ export function IntegrationsPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs font-mono text-[#929B90]">
-                    Recent Verified Webhook Deliveries
+                    Recent updates received from GitHub (webhooks)
                   </p>
                   <span className="text-[11px] font-mono text-[#929B90]">
                     Endpoint: {githubStatus?.webhookPath || '/api/webhooks/github'}
@@ -896,7 +874,7 @@ export function IntegrationsPage() {
                 </div>
                 {recentDeliveries.length === 0 ? (
                   <p className="text-xs text-[#929B90]">
-                    No verified webhook deliveries recorded for your connected repositories yet.
+                    Nothing received yet. Make a change in a connected project to test it.
                   </p>
                 ) : (
                   <ul className="divide-y divide-[#252D24] rounded-xl border border-[#252D24] bg-[#080908] px-4 text-xs">
@@ -933,11 +911,11 @@ export function IntegrationsPage() {
         onClose={() => setDisconnectTarget(null)}
         onConfirm={handleConfirmDisconnect}
         loading={disconnecting}
-        title="Disconnect GitHub Account?"
-        message={`Disconnecting ${
+        title="Disconnect this GitHub account?"
+        message={`BuildLog will stop receiving updates from ${
           disconnectTarget?.accountName ?? 'this account'
-        } stops incoming webhook ingestion and marks linked repositories as disconnected. Previously ingested events remain in your archive unless deleted from Settings.`}
-        confirmLabel="Disconnect Account"
+        } and its projects. Everything already saved stays in BuildLog unless you delete it in Settings.`}
+        confirmLabel="Disconnect"
       />
     </AppShell>
   );

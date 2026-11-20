@@ -34,10 +34,10 @@ interface AppShellProps {
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Overview', icon: LayoutDashboard },
-  { to: '/projects', label: 'My Projects', icon: GitBranch },
-  { to: '/timeline', label: 'Activity Timeline', icon: History },
-  { to: '/memory', label: 'Project Memory', icon: FileCode2 },
-  { to: '/integrations', label: 'Integrations', icon: Plug },
+  { to: '/projects', label: 'Projects', icon: GitBranch },
+  { to: '/timeline', label: 'Timeline', icon: History },
+  { to: '/memory', label: 'Project summary', icon: FileCode2 },
+  { to: '/integrations', label: 'Connections', icon: Plug },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -108,7 +108,7 @@ export function AppShell({
     ).map((item) => ({
       id: `route-${item.to}`,
       label: item.label,
-      sublabel: 'Workspace view',
+      sublabel: 'Page',
       to: item.to,
       kind: 'route' as const,
     }));
@@ -183,7 +183,7 @@ export function AppShell({
           >
             <span className="inline-flex items-center gap-2 truncate">
               <Search className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-              <span className="truncate">Quick switch...</span>
+              <span className="truncate">Go to…</span>
             </span>
             <kbd className="font-mono text-[10px] text-[#929B90] bg-[#181B18] border border-[#252D24] rounded px-1.5 py-0.5 shrink-0">
               ⌘K
@@ -230,8 +230,8 @@ export function AppShell({
           {/* Tracked Repositories Quick List */}
           <div className="pt-5">
             <div className="px-3 pb-1.5 flex items-center justify-between">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-[#929B90]/80">
-                Tracked Repos
+              <span className="text-[10px] uppercase tracking-wider text-[#929B90]/80">
+                Your projects
               </span>
               <Link
                 to="/integrations"
@@ -242,7 +242,7 @@ export function AppShell({
             </div>
             {repositories.length === 0 ? (
               <p className="px-3 py-2 text-xs text-[#929B90]/75">
-                No repositories connected yet.
+                No projects yet.
               </p>
             ) : (
               <ul className="space-y-0.5">
@@ -378,21 +378,21 @@ export function AppShell({
             />
             <span>
               {connectedIntegrations.length > 0
-                ? `GitHub App Connected · ${activeRepos.length} active ${
-                    activeRepos.length === 1 ? 'repository' : 'repositories'
+                ? `GitHub connected · tracking ${activeRepos.length} ${
+                    activeRepos.length === 1 ? 'project' : 'projects'
                   }`
-                : 'No GitHub App connected yet — configure in Integrations'}
+                : 'GitHub not connected yet. Add a project to start.'}
             </span>
           </Link>
 
           <div className="flex items-center gap-3 shrink-0">
             <Link to="/integrations" className={getButtonClasses('secondary', 'sm')}>
               <Plus className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-              <span>Connect Repository</span>
+              <span>Add a project</span>
             </Link>
             <Link to={resumeTarget} className={getButtonClasses('primary', 'sm')}>
               <Zap className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-              <span>Resume Context</span>
+              <span>Catch up</span>
             </Link>
           </div>
         </div>
@@ -445,8 +445,8 @@ export function AppShell({
       <Modal
         open={quickSwitchOpen}
         onClose={() => setQuickSwitchOpen(false)}
-        title="Quick Switch"
-        description="Jump to any workspace screen or connected repository."
+        title="Go to…"
+        description="Jump to a page or one of your projects."
         maxWidthClass="max-w-lg"
       >
         <div className="space-y-4">
@@ -460,8 +460,8 @@ export function AppShell({
               autoFocus
               value={quickQuery}
               onChange={(e) => setQuickQuery(e.target.value)}
-              placeholder="Search routes or repository names..."
-              aria-label="Quick switch search"
+              placeholder="Type a page or project name…"
+              aria-label="Search pages and projects"
               className="min-h-[42px] w-full rounded-lg border border-[#252D24] bg-[#080908] pl-10 pr-3.5 py-2 text-sm text-[#F3F5EF] placeholder:text-[#929B90]/60 focus:outline-none focus:border-[#B8F34A]"
             />
           </div>
@@ -469,8 +469,8 @@ export function AppShell({
           <div className="space-y-3 max-h-72 overflow-y-auto">
             {filteredQuickItems.repoResults.length > 0 && (
               <div>
-                <p className="text-[11px] font-mono uppercase tracking-wider text-[#929B90] mb-1.5">
-                  Repositories
+                <p className="text-[11px] uppercase tracking-wider text-[#929B90] mb-1.5">
+                  Projects
                 </p>
                 <ul className="space-y-1">
                   {filteredQuickItems.repoResults.map((item) => (
@@ -497,8 +497,8 @@ export function AppShell({
 
             {filteredQuickItems.routeResults.length > 0 && (
               <div>
-                <p className="text-[11px] font-mono uppercase tracking-wider text-[#929B90] mb-1.5">
-                  Workspace Pages
+                <p className="text-[11px] uppercase tracking-wider text-[#929B90] mb-1.5">
+                  Pages
                 </p>
                 <ul className="space-y-1">
                   {filteredQuickItems.routeResults.map((item) => (
@@ -523,7 +523,7 @@ export function AppShell({
             {filteredQuickItems.repoResults.length === 0 &&
               filteredQuickItems.routeResults.length === 0 && (
                 <p className="text-xs text-[#929B90] text-center py-6">
-                  No matching views or repositories found.
+                  Nothing matches that.
                 </p>
               )}
           </div>

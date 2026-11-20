@@ -110,13 +110,13 @@ export function ProjectMemoryPage() {
       setCopied(true);
       showToast(
         viewMode === 'prompt'
-          ? 'Coding prompt copied to clipboard.'
-          : 'Resume Project Markdown copied to clipboard.',
+          ? 'Copied. Paste it into your AI assistant.'
+          : 'Summary copied.',
         'success'
       );
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      showToast('Clipboard permission denied in this browser.', 'error');
+      showToast("Couldn't copy. Your browser blocked access to the clipboard.", 'error');
     }
   }, [activeCopyText, showToast, viewMode]);
 
@@ -143,7 +143,7 @@ export function ProjectMemoryPage() {
     if (!activeRepository || !resumeReport) return;
     const filename = `${slugifyFilename(activeRepository.fullName)}-resume-context.md`;
     downloadTextFile(filename, resumeReport.markdown, 'text/markdown;charset=utf-8');
-    showToast(`Exported ${filename}`, 'success');
+    showToast(`Downloaded ${filename}`, 'success');
   };
 
   const handleRefreshMemory = async () => {
@@ -151,9 +151,9 @@ export function ProjectMemoryPage() {
     setRefreshing(true);
     try {
       await refreshProjectMemory(activeRepository);
-      showToast(`Refreshed project memory for ${activeRepository.fullName}.`, 'success');
+      showToast(`Summary updated for ${activeRepository.fullName}.`, 'success');
     } catch (error) {
-      showToast(parseFriendlyFirestoreError(error, 'Unable to update memory.'), 'error');
+      showToast(parseFriendlyFirestoreError(error, "Couldn't update the summary. Please try again."), 'error');
     } finally {
       setRefreshing(false);
     }
@@ -162,16 +162,11 @@ export function ProjectMemoryPage() {
   const bottomActionBar =
     activeRepository && resumeReport ? (
       <div className="hidden md:flex sticky bottom-0 z-20 border-t border-[#252D24] bg-[#0D0F0D]/95 backdrop-blur-md px-8 py-3 items-center justify-between gap-6">
-        <div className="flex items-center gap-4 text-xs font-mono text-[#929B90] min-w-0">
-          <span className="tabular-nums text-[#FCFFEC] whitespace-nowrap">
-            {activeCopyText.length.toLocaleString()} chars
-          </span>
-          <span aria-hidden="true">·</span>
+        <div className="flex items-center gap-4 text-xs text-[#929B90] min-w-0">
           <span className="truncate">
-            Output format:{' '}
-            <strong className="text-[#B8F34A] font-medium">
-              {viewMode === 'prompt' ? 'IDE / Coding Agent Prompt' : 'Structured Markdown Brief'}
-            </strong>
+            {viewMode === 'prompt'
+              ? 'Copying: version for AI assistants'
+              : 'Copying: project summary'}
           </span>
         </div>
 
@@ -182,7 +177,7 @@ export function ProjectMemoryPage() {
             icon={<Download className="w-3.5 h-3.5" />}
             onClick={handleExportMarkdown}
           >
-            Export .md
+            Download
           </Button>
           <Button
             variant="primary"
@@ -190,7 +185,7 @@ export function ProjectMemoryPage() {
             icon={copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
             onClick={() => void handleCopyContext()}
           >
-            {copied ? 'Copied' : 'Copy Full Context'}
+            {copied ? 'Copied' : 'Copy'}
           </Button>
         </div>
       </div>
@@ -200,16 +195,16 @@ export function ProjectMemoryPage() {
     <AppShell
       title={
         activeRepository
-          ? `Project Memory · ${activeRepository.fullName}`
-          : 'Project Memory & Resume Brief'
+          ? `Summary · ${activeRepository.fullName}`
+          : 'Project summary'
       }
-      subtitle="Automated repository handoff compiled from verified GitHub activity, open PRs/issues, and evidence-backed summaries."
+      subtitle="Where the project stands right now, built from real activity on GitHub. Read it, copy it or share it."
       breadcrumbs={
         activeRepository
           ? [
               { label: 'Projects', to: '/projects' },
               { label: activeRepository.fullName, to: `/projects/${activeRepository.id}` },
-              { label: 'Project Memory' },
+              { label: 'Summary' },
             ]
           : undefined
       }
@@ -223,7 +218,7 @@ export function ProjectMemoryPage() {
               icon={<RefreshCw className="w-3.5 h-3.5" />}
               onClick={() => void handleRefreshMemory()}
             >
-              Refresh Memory
+              Update
             </Button>
             <Button
               variant="secondary"
@@ -231,7 +226,7 @@ export function ProjectMemoryPage() {
               icon={<Download className="w-3.5 h-3.5" />}
               onClick={handleExportMarkdown}
             >
-              Export Markdown
+              Download
             </Button>
             <Button
               variant="primary"
@@ -239,7 +234,7 @@ export function ProjectMemoryPage() {
               icon={copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
               onClick={() => void handleCopyContext()}
             >
-              {copied ? 'Copied' : 'Copy Context'}
+              {copied ? 'Copied' : 'Copy'}
             </Button>
           </>
         ) : undefined
@@ -254,9 +249,9 @@ export function ProjectMemoryPage() {
       ) : !activeRepository || !synthesized || !resumeReport ? (
         <EmptyState
           icon={<FileCode2 className="w-5 h-5" />}
-          title="No connected repository selected"
-          description="Connect a GitHub repository first so BuildLog can build living Project Memory and Resume Project Markdown briefs automatically."
-          actionLabel="Go to Integrations"
+          title="No project yet"
+          description="Add a project from GitHub and BuildLog will build its summary for you automatically."
+          actionLabel="Add a project"
           onAction={() => navigate('/integrations')}
         />
       ) : (
@@ -264,8 +259,8 @@ export function ProjectMemoryPage() {
           {/* Repo Selector & Format Switcher */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 rounded-2xl border border-[#252D24] bg-[#121512] p-4">
             <div className="flex flex-wrap items-center gap-3 min-w-0">
-              <label htmlFor="memory-repo-select" className="text-xs font-mono text-[#929B90] shrink-0">
-                Repository
+              <label htmlFor="memory-repo-select" className="text-xs text-[#929B90] shrink-0">
+                Project
               </label>
               <select
                 id="memory-repo-select"
@@ -280,7 +275,7 @@ export function ProjectMemoryPage() {
                 ))}
               </select>
               {storedMemory?.lastUpdatedAt && (
-                <span className="text-xs font-mono text-[#929B90] tabular-nums">
+                <span className="text-xs text-[#929B90] tabular-nums">
                   Updated {formatShortDate(storedMemory.lastUpdatedAt)}
                 </span>
               )}
@@ -296,7 +291,7 @@ export function ProjectMemoryPage() {
                     : 'text-[#929B90] hover:text-[#FCFFEC]'
                 }`}
               >
-                Structured View
+                Summary
               </button>
               <button
                 type="button"
@@ -307,7 +302,7 @@ export function ProjectMemoryPage() {
                     : 'text-[#929B90] hover:text-[#FCFFEC]'
                 }`}
               >
-                Markdown Brief
+                Plain text
               </button>
               <button
                 type="button"
@@ -318,7 +313,7 @@ export function ProjectMemoryPage() {
                     : 'text-[#929B90] hover:text-[#FCFFEC]'
                 }`}
               >
-                Coding Prompt
+                For AI assistants
               </button>
             </div>
           </div>
@@ -327,7 +322,7 @@ export function ProjectMemoryPage() {
           <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <div className="rounded-xl border border-[#252D24] bg-[#121512] p-3.5">
               <div className="flex items-center justify-between text-[11px] text-[#929B90]">
-                <span>Events</span>
+                <span>Updates</span>
                 <GitCommit className="w-3.5 h-3.5 text-[#B8F34A]" aria-hidden="true" />
               </div>
               <p className="mt-1.5 text-xl font-display font-bold tabular-nums text-[#FCFFEC]">
@@ -336,7 +331,7 @@ export function ProjectMemoryPage() {
             </div>
             <div className="rounded-xl border border-[#252D24] bg-[#121512] p-3.5">
               <div className="flex items-center justify-between text-[11px] text-[#929B90]">
-                <span>Code Areas</span>
+                <span>Parts changed</span>
                 <FolderGit2 className="w-3.5 h-3.5 text-[#B8F34A]" aria-hidden="true" />
               </div>
               <p className="mt-1.5 text-xl font-display font-bold tabular-nums text-[#FCFFEC]">
@@ -345,7 +340,7 @@ export function ProjectMemoryPage() {
             </div>
             <div className="rounded-xl border border-[#252D24] bg-[#121512] p-3.5">
               <div className="flex items-center justify-between text-[11px] text-[#929B90]">
-                <span>Open PRs</span>
+                <span>Waiting for review</span>
                 <GitPullRequest className="w-3.5 h-3.5 text-emerald-300" aria-hidden="true" />
               </div>
               <p className="mt-1.5 text-xl font-display font-bold tabular-nums text-[#FCFFEC]">
@@ -354,7 +349,7 @@ export function ProjectMemoryPage() {
             </div>
             <div className="rounded-xl border border-[#252D24] bg-[#121512] p-3.5">
               <div className="flex items-center justify-between text-[11px] text-[#929B90]">
-                <span>Open Issues</span>
+                <span>Open problems</span>
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-300" aria-hidden="true" />
               </div>
               <p className="mt-1.5 text-xl font-display font-bold tabular-nums text-[#FCFFEC]">
@@ -376,13 +371,13 @@ export function ProjectMemoryPage() {
             <div className="rounded-xl border border-amber-500/40 bg-amber-950/20 px-4 py-3 text-xs text-amber-200 flex items-start gap-2.5">
               <AlertTriangle className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" aria-hidden="true" />
               <div>
-                <p className="font-medium">Minimal activity history recorded so far</p>
+                <p className="font-medium">There isn't much activity yet</p>
                 <p className="mt-0.5 text-amber-200/80">
-                  Sync recent GitHub history on the{' '}
+                  This summary will fill in as work happens. You can also check for updates on the{' '}
                   <Link to={`/projects/${activeRepository.id}`} className="underline">
-                    repository page
-                  </Link>{' '}
-                  or push commits to enrich this brief with real evidence.
+                    project page
+                  </Link>
+                  .
                 </p>
               </div>
             </div>
@@ -391,13 +386,10 @@ export function ProjectMemoryPage() {
           {viewMode === 'markdown' || viewMode === 'prompt' ? (
             <div className="rounded-2xl border border-[#252D24] bg-[#121512] overflow-hidden">
               <div className="px-4 sm:px-5 py-3 border-b border-[#252D24] bg-[#0D0F0D] flex items-center justify-between gap-4 text-xs text-[#929B90]">
-                <span className="font-mono truncate">
+                <span className="truncate">
                   {viewMode === 'prompt'
-                    ? `${slugifyFilename(activeRepository.fullName)}-agent-prompt.txt`
-                    : `${slugifyFilename(activeRepository.fullName)}-resume-context.md`}
-                </span>
-                <span className="font-mono tabular-nums shrink-0">
-                  {activeCopyText.length.toLocaleString()} chars
+                    ? 'Paste this into ChatGPT, Claude or another AI assistant to bring it up to speed.'
+                    : 'Paste this into an email, doc or chat.'}
                 </span>
               </div>
               <pre className="p-5 text-xs font-mono text-[#F3F5EF] leading-relaxed whitespace-pre-wrap break-words">
@@ -409,25 +401,25 @@ export function ProjectMemoryPage() {
               <div className="lg:col-span-7 space-y-5">
                 <section className="rounded-2xl border border-[#252D24] bg-[#121512] p-5 space-y-3">
                   <h2 className="text-base font-display font-semibold text-[#FCFFEC]">
-                    Project Overview &amp; Objective
+                    Overview
                   </h2>
                   <p className="text-sm text-[#F3F5EF]/90 leading-relaxed">
                     {synthesized.projectOverview}
                   </p>
                   <div className="pt-3 border-t border-[#252D24]">
-                    <p className="text-xs font-mono text-[#929B90]">Objective</p>
+                    <p className="text-xs text-[#929B90]">Goal</p>
                     <p className="mt-1 text-sm text-[#FCFFEC]">
-                      {synthesized.objective || 'No objective supplied yet.'}
+                      {synthesized.objective || 'No goal set yet. You can add one on the project page.'}
                     </p>
                   </div>
                 </section>
 
                 <section className="rounded-2xl border border-[#252D24] bg-[#121512] p-5 space-y-3">
                   <h2 className="text-base font-display font-semibold text-[#FCFFEC]">
-                    Recent Commits &amp; Verified Changes
+                    What changed recently
                   </h2>
                   {synthesized.recentChanges.length > 0 ? (
-                    <ul className="space-y-1.5 text-xs font-mono text-[#F3F5EF]/90">
+                    <ul className="space-y-1.5 text-xs text-[#F3F5EF]/90">
                       {synthesized.recentChanges.map((item, idx) => (
                         <li key={idx} className="leading-relaxed">
                           • {item}
@@ -435,13 +427,13 @@ export function ProjectMemoryPage() {
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-sm text-[#929B90]">No commits ingested yet.</p>
+                    <p className="text-sm text-[#929B90]">No changes yet.</p>
                   )}
                 </section>
 
                 <section className="rounded-2xl border border-[#252D24] bg-[#121512] p-5 space-y-3">
                   <h2 className="text-base font-display font-semibold text-[#FCFFEC]">
-                    Modified Code Areas
+                    Parts of the project that changed
                   </h2>
                   {synthesized.modifiedCodeAreas.length > 0 ? (
                     <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs font-mono text-[#B8F34A]">
@@ -455,7 +447,7 @@ export function ProjectMemoryPage() {
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-sm text-[#929B90]">No changed file paths recorded yet.</p>
+                    <p className="text-sm text-[#929B90]">Nothing yet.</p>
                   )}
                 </section>
               </div>
@@ -463,12 +455,12 @@ export function ProjectMemoryPage() {
               <div className="lg:col-span-5 space-y-5">
                 <section className="rounded-2xl border border-[#252D24] bg-[#121512] p-5 space-y-3">
                   <h2 className="text-base font-display font-semibold text-[#FCFFEC]">
-                    Open Pull Requests &amp; Issues
+                    Still open
                   </h2>
                   <div className="space-y-3 text-xs">
                     <div>
-                      <p className="font-mono text-[#B8F34A] mb-1">
-                        Open Pull Requests ({synthesized.openPullRequests.length})
+                      <p className="text-[#B8F34A] mb-1">
+                        Waiting for review: pull requests ({synthesized.openPullRequests.length})
                       </p>
                       {synthesized.openPullRequests.length > 0 ? (
                         <ul className="space-y-1 text-[#F3F5EF]">
@@ -477,13 +469,13 @@ export function ProjectMemoryPage() {
                           ))}
                         </ul>
                       ) : (
-                        <p className="text-[#929B90]">None open from ingested events.</p>
+                        <p className="text-[#929B90]">None right now.</p>
                       )}
                     </div>
 
                     <div className="pt-3 border-t border-[#252D24]">
-                      <p className="font-mono text-amber-300 mb-1">
-                        Open Issues ({synthesized.openIssues.length})
+                      <p className="text-amber-300 mb-1">
+                        Open problems: issues ({synthesized.openIssues.length})
                       </p>
                       {synthesized.openIssues.length > 0 ? (
                         <ul className="space-y-1 text-[#F3F5EF]">
@@ -492,13 +484,13 @@ export function ProjectMemoryPage() {
                           ))}
                         </ul>
                       ) : (
-                        <p className="text-[#929B90]">None open from ingested events.</p>
+                        <p className="text-[#929B90]">None right now.</p>
                       )}
                     </div>
 
                     <div className="pt-3 border-t border-[#252D24]">
-                      <p className="font-mono text-red-300 mb-1">
-                        Evidence-Backed Blockers ({synthesized.knownBlockers.length})
+                      <p className="text-red-300 mb-1">
+                        Blockers ({synthesized.knownBlockers.length})
                       </p>
                       {synthesized.knownBlockers.length > 0 ? (
                         <ul className="space-y-1 text-red-200">
@@ -507,7 +499,7 @@ export function ProjectMemoryPage() {
                           ))}
                         </ul>
                       ) : (
-                        <p className="text-[#929B90]">No blockers supported by current evidence.</p>
+                        <p className="text-[#929B90]">No blockers right now.</p>
                       )}
                     </div>
                   </div>
@@ -515,7 +507,7 @@ export function ProjectMemoryPage() {
 
                 <section className="rounded-2xl border border-[#252D24] bg-[#121512] p-5 space-y-3">
                   <h2 className="text-base font-display font-semibold text-[#FCFFEC]">
-                    Suggested Next Actions
+                    Suggested next steps
                   </h2>
                   {synthesized.suggestedNextSteps.length > 0 ? (
                     <ol className="space-y-1.5 text-xs text-[#F3F5EF] list-decimal list-inside">
@@ -527,13 +519,13 @@ export function ProjectMemoryPage() {
                     </ol>
                   ) : (
                     <p className="text-xs text-[#929B90]">
-                      Sync recent repository history to generate next-step prompts.
+                      Suggestions will appear once there's some recent activity.
                     </p>
                   )}
 
                   {resumeReport.relevantLinks.length > 0 && (
                     <div className="pt-3 border-t border-[#252D24]">
-                      <p className="text-xs font-mono text-[#929B90] mb-1.5">Relevant GitHub Links</p>
+                      <p className="text-xs text-[#929B90] mb-1.5">Links on GitHub</p>
                       <ul className="space-y-1">
                         {resumeReport.relevantLinks.slice(0, 5).map((url) => (
                           <li key={url}>

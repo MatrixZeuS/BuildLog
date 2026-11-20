@@ -20,7 +20,11 @@ export function parseApiResponseBody<T>(
     if (parsed && typeof parsed === 'object' && typeof parsed.error === 'string' && parsed.error) {
       throw new Error(parsed.error);
     }
-    throw new Error(`Request failed with status ${status}`);
+    throw new Error(
+      status >= 500
+        ? `BuildLog's server ran into a problem (error ${status}). Please try again in a minute.`
+        : `Something went wrong (error ${status}). Please try again.`
+    );
   }
 
   if (!parsed || typeof parsed !== 'object') {
@@ -31,12 +35,12 @@ export function parseApiResponseBody<T>(
 
     if (looksLikeHtml) {
       throw new Error(
-        `Server returned HTML instead of JSON from ${url} (HTTP ${status}). Make sure the BuildLog Node server (server.ts) is running and handling /api/* routes on this URL.`
+        `Server returned HTML instead of JSON from ${url} (HTTP ${status}). BuildLog's server isn't responding as expected. Please try again in a minute.`
       );
     }
 
     throw new Error(
-      `Server returned an invalid or empty response from ${url} (HTTP ${status}).`
+      `BuildLog's server sent back an invalid or empty response (error ${status}). Please try again.`
     );
   }
 

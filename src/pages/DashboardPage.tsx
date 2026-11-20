@@ -6,7 +6,6 @@ import {
   Check,
   Copy,
   ExternalLink,
-  FileCode2,
   GitBranch,
   GitPullRequest,
   Plug,
@@ -35,7 +34,6 @@ import {
 export function DashboardPage() {
   const { user, userProfile } = useAuth();
   const {
-    integrations,
     repositories,
     activityEvents,
     activitySummaries,
@@ -68,11 +66,7 @@ export function DashboardPage() {
     userProfile?.displayName ||
     user?.displayName ||
     user?.email?.split('@')[0] ||
-    'Developer';
-
-  const connectedIntegrationCount = integrations.filter(
-    (i) => i.status === 'connected'
-  ).length;
+    'there';
 
   const repoMap = useMemo(
     () => new Map(repositories.map((r) => [r.id, r])),
@@ -102,10 +96,10 @@ export function DashboardPage() {
     try {
       await navigator.clipboard.writeText(report.markdown);
       setCopiedRepoId(repo.id);
-      showToast(`Copied Resume Context for ${repo.fullName}.`, 'success');
+      showToast(`Copied the summary for ${repo.fullName}.`, 'success');
       window.setTimeout(() => setCopiedRepoId(null), 2000);
     } catch {
-      showToast('Clipboard access was denied in this browser.', 'error');
+      showToast("Couldn't copy. Your browser blocked access to the clipboard.", 'error');
     }
   };
 
@@ -113,19 +107,7 @@ export function DashboardPage() {
     <AppShell
       title="Overview"
       breadcrumbs={[{ label: 'Workspace' }, { label: 'Overview' }]}
-      subtitle="Automated GitHub activity overview, inferred activity clusters, and live project memory."
-      actions={
-        <>
-          <Link to="/memory" className={getButtonClasses('secondary', 'sm')}>
-            <FileCode2 className="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span>Project Memory</span>
-          </Link>
-          <Link to="/integrations" className={getButtonClasses('primary', 'sm')}>
-            <Plug className="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span>Connect Repository</span>
-          </Link>
-        </>
-      }
+      subtitle="What's been happening across your projects."
     >
       {error && (
         <div
@@ -153,9 +135,9 @@ export function DashboardPage() {
           <WebhookHealthCard variant="dashboard" />
           <EmptyState
             icon={<Plug className="w-5 h-5" />}
-            title="Connect a GitHub repository to start automated memory"
-            description="Paste any GitHub repository URL to authorize read-only access, import recent commits, pull requests, and issues, and track new changes automatically."
-            actionLabel="Connect Repository"
+            title="Add your first project"
+            description="Paste a link to a project on GitHub. BuildLog will copy your recent work and keep track of new changes automatically. It can only read your project, never change it."
+            actionLabel="Add a project"
             onAction={() => navigate('/integrations')}
           />
         </div>
@@ -169,28 +151,26 @@ export function DashboardPage() {
             />
             <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-5">
               <div className="space-y-1.5">
-                <p className="text-xs font-mono text-[#B8F34A]">
+                <p className="text-xs text-[#B8F34A]">
                   Welcome back, {displayName}
                 </p>
                 <h2 className="text-xl sm:text-2xl font-display font-bold tracking-tight text-[#FCFFEC]">
-                  {metrics.activeReposCount} active{' '}
-                  {metrics.activeReposCount === 1 ? 'repository' : 'repositories'} tracked on autopilot
+                  Tracking {metrics.activeReposCount}{' '}
+                  {metrics.activeReposCount === 1 ? 'project' : 'projects'} for you
                 </h2>
                 <p className="text-sm text-[#929B90]">
-                  {metrics.totalEventsCount} GitHub events recorded across{' '}
-                  {connectedIntegrationCount} connected{' '}
-                  {connectedIntegrationCount === 1 ? 'installation' : 'installations'}.
+                  {metrics.totalEventsCount} {metrics.totalEventsCount === 1 ? 'update' : 'updates'} recorded so far.
                 </p>
               </div>
 
               <div className="flex flex-wrap items-center gap-2.5 shrink-0">
                 <Link to="/projects" className={getButtonClasses('secondary', 'md')}>
                   <GitBranch className="w-4 h-4 shrink-0" aria-hidden="true" />
-                  <span>Browse Projects</span>
+                  <span>All projects</span>
                 </Link>
                 <Link to="/memory" className={getButtonClasses('primary', 'md')}>
                   <Zap className="w-4 h-4 shrink-0" aria-hidden="true" />
-                  <span>Resume Context</span>
+                  <span>Catch up</span>
                 </Link>
               </div>
             </div>
@@ -203,53 +183,53 @@ export function DashboardPage() {
           <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="rounded-2xl border border-[#252D24] bg-[#121512] p-5">
               <div className="flex items-center justify-between text-xs text-[#929B90]">
-                <span>Active Repositories</span>
+                <span>Projects</span>
                 <GitBranch className="w-4 h-4 text-[#B8F34A]" aria-hidden="true" />
               </div>
               <p className="mt-2.5 text-3xl font-display font-bold tabular-nums text-[#FCFFEC]">
                 {metrics.activeReposCount}
               </p>
               <p className="mt-1 text-xs text-[#929B90]">
-                {repositories.length} total connected
+                being tracked
               </p>
             </div>
 
             <div className="rounded-2xl border border-[#252D24] bg-[#121512] p-5">
               <div className="flex items-center justify-between text-xs text-[#929B90]">
-                <span>Events This Week</span>
+                <span>Updates this week</span>
                 <Activity className="w-4 h-4 text-[#B8F34A]" aria-hidden="true" />
               </div>
               <p className="mt-2.5 text-3xl font-display font-bold tabular-nums text-[#FCFFEC]">
                 {metrics.eventsThisWeekCount}
               </p>
               <p className="mt-1 text-xs text-[#929B90] tabular-nums">
-                {metrics.totalEventsCount} total ingested events
+                {metrics.totalEventsCount} in total
               </p>
             </div>
 
             <div className="rounded-2xl border border-[#252D24] bg-[#121512] p-5">
               <div className="flex items-center justify-between text-xs text-[#929B90]">
-                <span>AI Summaries Ready</span>
+                <span>AI recaps</span>
                 <Sparkles className="w-4 h-4 text-[#B8F34A]" aria-hidden="true" />
               </div>
               <p className="mt-2.5 text-3xl font-display font-bold tabular-nums text-[#FCFFEC]">
                 {metrics.aiSummariesCount}
               </p>
               <p className="mt-1 text-xs text-[#929B90] tabular-nums">
-                {metrics.pendingEventsCount} awaiting summary
+                {metrics.pendingEventsCount} updates not summarized yet
               </p>
             </div>
 
             <div className="rounded-2xl border border-[#252D24] bg-[#121512] p-5">
               <div className="flex items-center justify-between text-xs text-[#929B90]">
-                <span>Open PRs &amp; Issues</span>
+                <span>Still open</span>
                 <GitPullRequest className="w-4 h-4 text-[#B8F34A]" aria-hidden="true" />
               </div>
               <p className="mt-2.5 text-3xl font-display font-bold tabular-nums text-[#FCFFEC]">
                 {metrics.openPullRequestsCount + metrics.openIssuesCount}
               </p>
               <p className="mt-1 text-xs text-[#929B90] tabular-nums">
-                {metrics.openPullRequestsCount} PRs · {metrics.openIssuesCount} issues
+                {metrics.openPullRequestsCount} waiting for review · {metrics.openIssuesCount} problems
               </p>
             </div>
           </section>
@@ -263,27 +243,27 @@ export function DashboardPage() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <h2 className="text-base font-display font-semibold text-[#FCFFEC]">
-                      Recent Activity Summaries
+                      Latest recaps
                     </h2>
                     <p className="mt-0.5 text-xs text-[#929B90]">
-                      Evidence-backed repository briefs ready to copy into your next coding session.
+                      Short summaries of recent work, ready to read or share.
                     </p>
                   </div>
                   <Link
                     to="/memory"
                     className="text-xs font-medium text-[#B8F34A] hover:underline whitespace-nowrap shrink-0"
                   >
-                    Open Memory
+                    All summaries
                   </Link>
                 </div>
 
                 {activitySummaries.length === 0 ? (
                   <div className="rounded-xl border border-[#252D24] bg-[#080908] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <p className="text-xs text-[#929B90] leading-relaxed">
-                      No AI summaries generated yet. Raw GitHub events are preserved—open a repository or the Timeline to summarize pending events.
+                      No recaps yet. Your updates are saved. Open the Timeline to create a recap.
                     </p>
                     <Link to="/timeline" className={getButtonClasses('secondary', 'sm')}>
-                      Review Timeline
+                      Open timeline
                     </Link>
                   </div>
                 ) : (
@@ -303,7 +283,7 @@ export function DashboardPage() {
                                 to={repo ? `/projects/${repo.id}` : '/projects'}
                                 className="text-sm font-display font-semibold text-[#FCFFEC] hover:text-[#B8F34A] truncate"
                               >
-                                {repo?.fullName ?? 'Repository'}
+                                {repo?.fullName ?? 'Project'}
                               </Link>
                             </div>
                             <span className="text-xs font-mono tabular-nums text-[#929B90] shrink-0">
@@ -316,9 +296,9 @@ export function DashboardPage() {
                           </p>
 
                           <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#252D24]">
-                            <span className="text-xs font-mono text-[#929B90] tabular-nums">
-                              {summary.evidence.length} verified facts ·{' '}
-                              {summary.suggestedNextSteps.length} suggested next checks
+                            <span className="text-xs text-[#929B90] tabular-nums">
+                              {summary.evidence.length} facts ·{' '}
+                              {summary.suggestedNextSteps.length} suggested next steps
                             </span>
 
                             {repo && (
@@ -335,13 +315,13 @@ export function DashboardPage() {
                                   }
                                   onClick={() => void handleCopyRepoContext(repo.id)}
                                 >
-                                  {isCopied ? 'Copied' : 'Copy Context'}
+                                  {isCopied ? 'Copied' : 'Copy summary'}
                                 </Button>
                                 <Link
                                   to={`/projects/${repo.id}/memory`}
                                   className={getButtonClasses('ghost', 'sm')}
                                 >
-                                  <span>Memory</span>
+                                  <span>Summary</span>
                                   <ArrowRight className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                                 </Link>
                               </div>
@@ -359,10 +339,10 @@ export function DashboardPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <h2 className="text-base font-display font-semibold text-[#FCFFEC]">
-                      Inferred Activity Clusters
+                      Work sessions
                     </h2>
                     <p className="mt-0.5 text-xs text-[#929B90]">
-                      Grouped automatically from events within 90 minutes. Inferred patterns—not verified hours worked.
+                      Changes made close together, grouped for easy reading. These are estimates, not hours worked.
                     </p>
                   </div>
                   <Link
@@ -375,7 +355,7 @@ export function DashboardPage() {
 
                 {metrics.recentClusters.length === 0 ? (
                   <p className="mt-5 text-sm text-[#929B90]">
-                    No GitHub events ingested yet. Sync a repository from Projects to build activity clusters.
+                    Nothing yet. Work sessions appear once your projects have some changes.
                   </p>
                 ) : (
                   <ul className="mt-4 divide-y divide-[#252D24]">
@@ -389,9 +369,9 @@ export function DashboardPage() {
                             >
                               {cluster.repositoryName} — {cluster.label}
                             </Link>
-                            <p className="mt-0.5 text-xs text-[#929B90] font-mono truncate">
-                              {cluster.branches.join(', ') || 'default'} ·{' '}
-                              {cluster.changedFiles.length} changed files recorded
+                            <p className="mt-0.5 text-xs text-[#929B90] truncate">
+                              {cluster.changedFiles.length}{' '}
+                              {cluster.changedFiles.length === 1 ? 'file' : 'files'} changed
                             </p>
                           </div>
                           <span className="text-xs font-mono tabular-nums text-[#929B90] whitespace-nowrap shrink-0">
@@ -408,7 +388,7 @@ export function DashboardPage() {
               <div className="rounded-2xl border border-[#252D24] bg-[#121512] p-5 sm:p-6">
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="text-base font-display font-semibold text-[#FCFFEC]">
-                    Recent GitHub Events
+                    Latest updates
                   </h2>
                   <Link
                     to="/timeline"
@@ -420,7 +400,7 @@ export function DashboardPage() {
 
                 {metrics.recentEvents.length === 0 ? (
                   <p className="mt-4 text-sm text-[#929B90]">
-                    Waiting for your first GitHub push, pull request, or issue event.
+                    No updates yet. They'll appear here as soon as something changes on GitHub.
                   </p>
                 ) : (
                   <ul className="mt-4 divide-y divide-[#252D24]">
@@ -429,7 +409,7 @@ export function DashboardPage() {
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2.5 min-w-0">
                             <EventTypeLabel eventType={ev.eventType} />
-                            <span className="text-xs font-mono text-[#929B90] truncate">
+                            <span className="text-xs text-[#929B90] truncate">
                               {ev.repositoryName}
                             </span>
                           </div>
@@ -466,10 +446,10 @@ export function DashboardPage() {
               <div className="rounded-2xl border border-[#252D24] bg-[#121512] p-5 flex flex-col justify-between">
                 <div>
                   <h2 className="text-base font-display font-semibold text-[#FCFFEC]">
-                    7-Day Activity Pulse
+                    Last 7 days
                   </h2>
                   <p className="mt-0.5 text-xs text-[#929B90]">
-                    Verified push, PR, and issue events ingested per day.
+                    Number of updates each day.
                   </p>
                 </div>
 
@@ -500,7 +480,7 @@ export function DashboardPage() {
               <div className="rounded-2xl border border-[#252D24] bg-[#121512] p-5 space-y-4">
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="text-base font-display font-semibold text-[#FCFFEC]">
-                    Active Projects
+                    Your projects
                   </h2>
                   <Link
                     to="/projects"
@@ -526,14 +506,14 @@ export function DashboardPage() {
                         <RepositoryStatusLabel status={repo.status} />
                       </div>
                       <div className="flex items-center justify-between gap-2 text-xs text-[#929B90]">
-                        <span className="truncate font-mono">
-                          {repo.primaryLanguage || 'Repo'} · {repo.defaultBranch}
+                        <span className="truncate">
+                          {repo.primaryLanguage || 'Project'}
                         </span>
                         <Link
                           to={`/projects/${repo.id}/memory`}
                           className="text-[#B8F34A] hover:underline whitespace-nowrap shrink-0 font-medium"
                         >
-                          Memory →
+                          Summary →
                         </Link>
                       </div>
                     </li>
