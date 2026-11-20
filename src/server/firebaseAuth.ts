@@ -1,32 +1,6 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import type { NextFunction, Request, Response } from 'express';
-import { getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-
-function loadProjectId(): string {
-  try {
-    const configPath = path.resolve(process.cwd(), 'firebase-applet-config.json');
-    const raw = fs.readFileSync(configPath, 'utf8');
-    const parsed = JSON.parse(raw) as { projectId?: string };
-    if (parsed.projectId) return parsed.projectId;
-  } catch {
-    // Fallback to environment variables
-  }
-  return (
-    process.env.GOOGLE_CLOUD_PROJECT ||
-    process.env.GCLOUD_PROJECT ||
-    process.env.FIREBASE_PROJECT_ID ||
-    ''
-  );
-}
-
-const adminApp =
-  getApps().length > 0
-    ? getApps()[0]
-    : initializeApp({
-        projectId: loadProjectId() || undefined,
-      });
+import { getAdminApp } from './firebaseAdmin';
 
 export interface AuthenticatedRequest extends Request {
   uid?: string;
@@ -53,7 +27,7 @@ export async function requireFirebaseAuth(
   }
 
   try {
-    const decoded = await getAuth(adminApp).verifyIdToken(token);
+    const decoded = await getAuth(getAdminApp()).verifyIdToken(token);
     req.uid = decoded.uid;
     req.userEmail = decoded.email;
     next();

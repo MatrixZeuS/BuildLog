@@ -2,150 +2,110 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import test, { after, before, beforeEach } from 'node:test';
-import { setEnvironmentContext } from '@netlify/blobs';
-import { BlobsServer } from '@netlify/blobs/server';
+import test, { after, beforeEach } from 'node:test';
 import {
   createLocalFileBlobStoreAdapter,
   createWebhookStore,
-  getActiveBlobStore,
-  PREVIEW_BLOB_STORE_NAME,
-  PRODUCTION_BLOB_STORE_NAME,
+  PREVIEW_STATE_COLLECTION,
+  PRODUCTION_STATE_COLLECTION,
   resolveStorageEnvironment,
   sanitizeGitHubSession,
   setWebhookStoreAdapterForTesting,
 } from './webhookStore';
+import {
+  createFirestoreStateStoreAdapter,
+  encodeStateDocId,
+  etagToTimestampParts,
+  timestampToEtag,
+} from './firestoreStateStore';
+import { FakeFirestore } from './testing/fakeFirestore';
 
-let blobsServer: BlobsServer;
-let blobsDir: string;
-let serverUrl: string;
-const TEST_TOKEN = 'test-blobs-token';
-const TEST_SITE_ID = 'site-buildlog-test';
+// One shared in-memory Firestore for the whole file, like a real database shared by deployments.
+const fakeDb = new FakeFirestore();
 
-before(async () => {
-  blobsDir = await fs.mkdtemp(path.join(os.tmpdir(), 'buildlog-blobs-'));
-  blobsServer = new BlobsServer({
-    directory: blobsDir,
-    token: TEST_TOKEN,
-    debug: false,
-  });
-
-  // @netlify/blobs@11.1.9's local BlobsServer has two emulator gaps vs Netlify's hosted Blobs API:
-  // 1) BlobsServer.get() omits the `etag` response header (causing getWithMetadata().etag to be undefined)
-  // 2) BlobsServer.put() checks fs.access without a lock and hashes 1ms-resolution mtime for ETag
-  // Wrap the local BlobsServer handler in-test to serialize requests and attach ETag on GET 200s
-  // while executing all storage, HTTP, and SDK operations through the real @netlify/blobs SDK & BlobsServer.
-  const internalServer = blobsServer as unknown as {
-    handleRequest: (req: Request) => Promise<Response>;
-    getLocalPaths: (u: URL) => { dataPath?: string; key?: string };
-  };
-  const generateETag = (
-    BlobsServer as unknown as { generateETag: (filePath: string) => Promise<string> }
-  ).generateETag;
-  const rawHandleRequest = internalServer.handleRequest.bind(blobsServer);
-  let requestQueue: Promise<unknown> = Promise.resolve();
-
-  internalServer.handleRequest = (req: Request) => {
-    const run = async (): Promise<Response> => {
-      const res = await rawHandleRequest(req);
-      const method = req.method?.toUpperCase();
-      if (method === 'GET' && res.status === 200 && !res.headers.has('etag') && req.url) {
-        const parsed = new URL(req.url);
-        const { dataPath, key } = internalServer.getLocalPaths(parsed);
-        if (dataPath && key) {
-          const etag = await generateETag(dataPath);
-          if (etag) {
-            const headers = new Headers(res.headers);
-            headers.set('etag', etag);
-            return new Response(res.body, { status: res.status, headers });
-          }
-        }
-      }
-      if (method === 'PUT' && res.status === 200) {
-        // Ensure distinct mtime-based ETag across sub-millisecond writes in BlobsServer
-        await new Promise((r) => setTimeout(r, 2));
-      }
-      return res;
-    };
-
-    const next = requestQueue.then(run, run);
-    requestQueue = next.then(
-      () => undefined,
-      () => undefined
-    );
-    return next;
-  };
-
-  const addr = await blobsServer.start();
-  serverUrl = `http://127.0.0.1:${addr.port}`;
-});
-
-after(async () => {
-  setWebhookStoreAdapterForTesting(null);
-  await blobsServer?.stop();
-  if (blobsDir) {
-    await fs.rm(blobsDir, { recursive: true, force: true });
-  }
-});
-
-function setNetlifyBlobsContextEnv(deployID = 'deploy001'): void {
-  setEnvironmentContext({
-    edgeURL: serverUrl,
-    uncachedEdgeURL: serverUrl,
-    primaryRegion: 'us-east-1',
-    siteID: TEST_SITE_ID,
-    token: TEST_TOKEN,
-    deployID,
-  });
-}
-
-function makeRealBlobBackedStore(
-  context: 'production' | 'deploy-preview',
-  deployID = 'deploy001'
-) {
-  setNetlifyBlobsContextEnv(deployID);
-  const env: Record<string, string> = {
-    NETLIFY: 'true',
-    CONTEXT: context,
-    NETLIFY_BLOBS_CONTEXT: '1',
-  };
-  return createWebhookStore(() => getActiveBlobStore(env));
+function makeFirestoreBackedStore(vercelEnv: 'production' | 'preview') {
+  const resolved = resolveStorageEnvironment({ VERCEL: '1', VERCEL_ENV: vercelEnv });
+  const adapter = createFirestoreStateStoreAdapter(
+    fakeDb.collection(resolved.storeName),
+    FakeFirestore.timestamp
+  );
+  return createWebhookStore(() => adapter);
 }
 
 beforeEach(() => {
   setWebhookStoreAdapterForTesting(null);
 });
 
-test('resolveStorageEnvironment isolates production vs deploy-preview and preserves local-file fallback', () => {
+after(() => {
+  setWebhookStoreAdapterForTesting(null);
+});
+
+test('resolveStorageEnvironment isolates production vs preview on Vercel and keeps local-file fallback', () => {
   assert.deepEqual(resolveStorageEnvironment({}), {
     mode: 'local-file',
     storeName: 'local-file',
     isDeployScoped: false,
   });
 
-  assert.deepEqual(
-    resolveStorageEnvironment({ NETLIFY: 'true', CONTEXT: 'production' }),
-    {
-      mode: 'netlify-production',
-      storeName: PRODUCTION_BLOB_STORE_NAME,
-      isDeployScoped: false,
-    }
-  );
+  assert.deepEqual(resolveStorageEnvironment({ VERCEL: '1', VERCEL_ENV: 'production' }), {
+    mode: 'firestore-production',
+    storeName: PRODUCTION_STATE_COLLECTION,
+    isDeployScoped: false,
+  });
 
-  for (const ctx of ['deploy-preview', 'branch-deploy', 'dev', undefined]) {
-    assert.deepEqual(
-      resolveStorageEnvironment({ NETLIFY: 'true', CONTEXT: ctx }),
-      {
-        mode: 'netlify-deploy-preview',
-        storeName: PREVIEW_BLOB_STORE_NAME,
-        isDeployScoped: true,
-      }
-    );
+  for (const vercelEnv of ['preview', 'development', undefined]) {
+    assert.deepEqual(resolveStorageEnvironment({ VERCEL: '1', VERCEL_ENV: vercelEnv }), {
+      mode: 'firestore-preview',
+      storeName: PREVIEW_STATE_COLLECTION,
+      isDeployScoped: true,
+    });
   }
+
+  // Firestore can be forced outside Vercel (e.g. another host) with BUILDLOG_STORAGE
+  assert.equal(
+    resolveStorageEnvironment({ BUILDLOG_STORAGE: 'firestore', BUILDLOG_CONTEXT: 'production' }).mode,
+    'firestore-production'
+  );
 });
 
-test('Real @netlify/blobs SDK: OAuth state consumption is strictly one-time and rejects concurrent or cross-user attempts', async () => {
-  const store = makeRealBlobBackedStore('production', 'auth001');
+test('Firestore state store: etags round-trip, conditional writes and prefix listing', async () => {
+  assert.equal(timestampToEtag({ seconds: 12, nanoseconds: 3400 }), '12.000003400');
+  assert.deepEqual(etagToTimestampParts('12.000003400'), { seconds: 12, nanoseconds: 3400 });
+  assert.equal(etagToTimestampParts('"not-a-time"'), null);
+  assert.match(encodeStateDocId('pending/uid/abc'), /^[A-Za-z0-9_-]+$/);
+
+  const adapter = createFirestoreStateStoreAdapter(
+    fakeDb.collection('adapter_unit_test'),
+    FakeFirestore.timestamp
+  );
+
+  const created = await adapter.setJSON('a/1', { n: 1 }, { onlyIfNew: true });
+  assert.equal(created.modified, true);
+  const duplicate = await adapter.setJSON('a/1', { n: 2 }, { onlyIfNew: true });
+  assert.equal(duplicate.modified, false);
+
+  const read = await adapter.getWithMetadata<{ n: number }>('a/1');
+  assert.deepEqual(read?.data, { n: 1 });
+  assert.equal(read?.etag, created.etag);
+
+  const updated = await adapter.setJSON('a/1', { n: 3 }, { onlyIfMatch: read!.etag! });
+  assert.equal(updated.modified, true);
+  const stale = await adapter.setJSON('a/1', { n: 4 }, { onlyIfMatch: read!.etag! });
+  assert.equal(stale.modified, false);
+  const missing = await adapter.setJSON('a/404', { n: 5 }, { onlyIfMatch: read!.etag! });
+  assert.equal(missing.modified, false);
+
+  await adapter.setJSON('a/2', { n: 6 });
+  await adapter.setJSON('b/1', { n: 7 });
+  const listed = await adapter.listAll('a/');
+  assert.deepEqual(listed.map((e) => e.key), ['a/1', 'a/2']);
+
+  await adapter.delete('a/1');
+  assert.equal(await adapter.getWithMetadata('a/1'), null);
+});
+
+test('Firestore state store: OAuth state consumption is strictly one-time and rejects concurrent or cross-user attempts', async () => {
+  const store = makeFirestoreBackedStore('production');
   const stateToken = await store.createPendingAuthState('uid-alice', 'alice/repo-one');
 
   // Cross-user attempt must return null AND must not invalidate Alice's active state
@@ -167,8 +127,8 @@ test('Real @netlify/blobs SDK: OAuth state consumption is strictly one-time and 
   assert.equal(replay, null);
 });
 
-test('Real @netlify/blobs SDK: webhook lease acquisition, renewal, expired recovery, and stale-owner protection', async () => {
-  const store = makeRealBlobBackedStore('production', 'lease001');
+test('Firestore state store: webhook lease acquisition, renewal, expired recovery, and stale-owner protection', async () => {
+  const store = makeFirestoreBackedStore('production');
   const deliveryId = `deliv-${Date.now()}`;
   const t0 = 1_700_000_000_000;
 
@@ -332,8 +292,8 @@ test('Real @netlify/blobs SDK: webhook lease acquisition, renewal, expired recov
   assert.equal(userQueue.pendingEvents.length, 2);
 });
 
-test('Real @netlify/blobs SDK: concurrent event enqueue and acknowledgement never lose events', async () => {
-  const store = makeRealBlobBackedStore('production', 'queue001');
+test('Firestore state store: concurrent event enqueue and acknowledgement never lose events', async () => {
+  const store = makeFirestoreBackedStore('production');
   const ownerId = 'uid-queue-test';
   const makeEvent = (id: string) => ({
     queueId: `d-queue:${id}`,
@@ -375,8 +335,8 @@ test('Real @netlify/blobs SDK: concurrent event enqueue and acknowledgement neve
   );
 });
 
-test('Real @netlify/blobs SDK: concurrent installation authorization keeps all verified installations & keeps tokens server-side', async () => {
-  const store = makeRealBlobBackedStore('production', 'instauth001');
+test('Firestore state store: concurrent installation authorization keeps all verified installations & keeps tokens server-side', async () => {
+  const store = makeFirestoreBackedStore('production');
   const uid = 'uid-concurrent-inst';
 
   await store.saveUserGitHubSession({
@@ -403,8 +363,8 @@ test('Real @netlify/blobs SDK: concurrent installation authorization keeps all v
   assert.equal('accessToken' in publicSummary, false);
 });
 
-test('Real @netlify/blobs SDK: repository routing isolates installations and fails closed on ambiguous un-scoped lookup', async () => {
-  const store = makeRealBlobBackedStore('production', 'routing001');
+test('Firestore state store: repository routing isolates installations and fails closed on ambiguous un-scoped lookup', async () => {
+  const store = makeFirestoreBackedStore('production');
 
   await store.upsertInstallationMapping({
     installationId: 'inst-u1',
@@ -461,8 +421,8 @@ test('Real @netlify/blobs SDK: repository routing isolates installations and fai
   assert.equal(ambiguous, null);
 });
 
-test('Real @netlify/blobs SDK: deploy-preview storage is completely isolated from production and cannot purge production data', async () => {
-  const prodStore = makeRealBlobBackedStore('production', 'proddeploy01');
+test('Firestore state store: preview storage is completely isolated from production and cannot purge production data', async () => {
+  const prodStore = makeFirestoreBackedStore('production');
   const uid = 'uid-prod-owner';
 
   await prodStore.saveUserGitHubSession({
@@ -511,7 +471,7 @@ test('Real @netlify/blobs SDK: deploy-preview storage is completely isolated fro
   ]);
 
   // Switch to Deploy Preview context
-  const previewStore = makeRealBlobBackedStore('deploy-preview', 'previewdeploy99');
+  const previewStore = makeFirestoreBackedStore('preview');
 
   // Preview must NOT see production session, installations, or pending events
   assert.equal(await previewStore.getUserGitHubSession(uid), null);
